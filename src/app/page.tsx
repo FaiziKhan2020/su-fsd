@@ -16,7 +16,7 @@ export default function Home() {
 
     try{
       const fetchData = async()=>{
-        const csvData = await ((await fetch('http://localhost:3000/api')).json());
+        const csvData = await ((await fetch('https://su-fsd-zeta.vercel.app/api')).json());
         setData(csvData.data.data)
       }
       fetchData()
