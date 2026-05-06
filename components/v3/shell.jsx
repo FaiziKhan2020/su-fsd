@@ -66,7 +66,7 @@ function Sidebar({ view, setView, products }) {
   );
   return (
     <aside className="sidebar">
-      <div className="brand"><div className="logo"></div><div>R&D Pipeline</div></div>
+      <div className="brand"><div className="logo"></div><div>Pipeline OS</div></div>
       <div className="nav-section">Workspace</div>
       {item("home",      "Home",       "◉")}
       {item("inbox",     "Idea Inbox", "✦", counts.idea)}
@@ -87,7 +87,11 @@ function Sidebar({ view, setView, products }) {
 }
 
 // ===== TopBar =====
-function TopBar({ crumbs, onNewIdea }) {
+function TopBar({ crumbs, onNewIdea, currentUser, onSwitchUser, products, onOpenProduct }) {
+  const [open, setOpen] = useS2(false);
+  const me = RD2.person(currentUser);
+  // Surface only the people who have a real "home" — internal team members.
+  const switchable = PIPELINE_DATA.PEOPLE.filter(p => !p.external);
   return (
     <div className="topbar">
       <div className="crumbs-bar">{crumbs.map((c, i) => (
@@ -96,7 +100,61 @@ function TopBar({ crumbs, onNewIdea }) {
           <span style={{ color: i === crumbs.length-1 ? "var(--ink)" : "var(--ink-3)" }}>{c}</span>
         </React.Fragment>
       ))}</div>
+      {products && onOpenProduct && (
+        <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 16px", maxWidth: 560 }}>
+          <RD2.ProductSearch products={products} onOpen={onOpenProduct} />
+        </div>
+      )}
       <div style={{ flex: 1 }}></div>
+      {me && (
+        <div style={{ position: "relative", marginRight: 10 }}>
+          <button onClick={() => setOpen(!open)} className="role-switcher-btn">
+            <span style={{ fontSize: 10.5, color: "var(--ink-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Viewing as</span>
+            <Avatar user={me} size="sm" />
+            <span style={{ fontWeight: 500, fontSize: 12.5 }}>{me.name}</span>
+            {RD2.isAdmin && RD2.isAdmin(currentUser) && (
+              <span title="Overseer — sees the full pipeline and can act on any product"
+                style={{ fontSize: 9.5, fontWeight: 600, padding: "2px 5px", borderRadius: 3, background: "var(--ink-1)", color: "var(--bg)", letterSpacing: "0.04em" }}>
+                OVERSEER
+              </span>
+            )}
+            <span style={{ fontSize: 9, color: "var(--ink-3)" }}>▾</span>
+          </button>
+          {open && (
+            <>
+              <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }}></div>
+              <div className="role-switcher-menu">
+                <div style={{ padding: "8px 12px 4px", fontSize: 10.5, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Switch role</div>
+                {switchable.map(p => (
+                  <button key={p.id} className={`role-switcher-item ${p.id === currentUser ? "active" : ""}`}
+                    onClick={() => { onSwitchUser(p.id); setOpen(false); }}>
+                    <Avatar user={p} size="sm" />
+                    <div style={{ flex: 1, textAlign: "left" }}>
+                      <div style={{ fontWeight: 500, fontSize: 12.5 }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.role}</div>
+                    </div>
+                    {p.id === currentUser && <span style={{ fontSize: 11, color: "var(--accent)" }}>✓</span>}
+                  </button>
+                ))}
+                <div style={{ height: 1, background: "var(--line)", margin: "6px 0" }}></div>
+                <button className="role-switcher-item" style={{ color: "var(--ink-3)" }}
+                  onClick={() => {
+                    if (confirm("Reset all in-memory edits back to the seed data? Your uploads, pushes, and decisions will be cleared.")) {
+                      try { localStorage.removeItem("rd-products"); } catch (e) {}
+                      location.reload();
+                    }
+                  }}>
+                  <span style={{ width: 24, textAlign: "center", fontSize: 13 }}>↺</span>
+                  <div style={{ flex: 1, textAlign: "left" }}>
+                    <div style={{ fontWeight: 500, fontSize: 12.5 }}>Reset to seed data</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-4)" }}>Clears all your edits</div>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <button className="btn primary new-idea-btn" onClick={onNewIdea}>
         <span style={{ fontSize: 15, lineHeight: 1, marginRight: 2 }}>+</span> New idea
       </button>
@@ -104,4 +162,26 @@ function TopBar({ crumbs, onNewIdea }) {
   );
 }
 
-window.RD2 = Object.assign(window.RD2 || {}, { Avatar, StagePill, HealthDot, BrandChip, CycleBand, Sidebar, TopBar });
+window.RD2 = Object.assign(window.RD2 || {}, { Avatar, StagePill, HealthDot, BrandChip, CycleBand, Sidebar, TopBar, GatedAction });
+
+// ===== GatedAction =====
+// Wraps a primary action so it disables for users who shouldn't act on
+// this product. Joel & Chesky (overseers) always pass; we don't tag their
+// actions as "overrides" — overseeing the pipeline IS their lane.
+//   <GatedAction product={p}>
+//     <button className="btn primary" onClick={...}>Send brief →</button>
+//   </GatedAction>
+function GatedAction({ product, children, ownerOnly, hideWhenLocked }) {
+  const u = (RD2 && RD2.__currentUser) || "chesky";
+  const can = RD2.can("act", product, u);
+
+  if (hideWhenLocked && !can) return null;
+  if (!can) {
+    return React.cloneElement(children, {
+      disabled: true,
+      title: `Only ${product?.owner || "the owner"} can take this action. Switch role from the topbar to act.`,
+      style: { ...(children.props.style || {}), opacity: 0.45, cursor: "not-allowed" },
+    });
+  }
+  return children;
+}

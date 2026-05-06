@@ -16,6 +16,7 @@ function useAppStore() {
   const [readIds, setReadIds] = useS(new Set());
   const [toast, setToast] = useS(null);
   const [comments, setComments] = useS({}); // { productId: [{who, text, at, mentions:[]}] }
+  const [currentUser, setCurrentUser] = useS("chesky"); // role switcher
 
   function showToast(msg, tone = "ok") {
     setToast({ msg, tone, at: Date.now() });
@@ -25,13 +26,30 @@ function useAppStore() {
   function back() { setRoute({ name: "inbox" }); }
   function markRead(id) { setReadIds(s => new Set([...s, id])); }
   function approve(productId, decision, note) {
-    setProducts(ps => ps.map(p => p.id === productId
-      ? { ...p, approvals: { ...p.approvals, chesky: { decision, at: 0, note: note || "" } },
-          stage: decision === "approve" && p.approvals?.joel?.decision === "approve" ? "build" : p.stage,
-          waitingOn: decision === "approve" ? null : "team" }
-      : p));
-    showToast(decision === "approve" ? "Approved · moved to Build" :
-              decision === "changes" ? "Changes requested" : "Rejected");
+    setProducts(ps => ps.map(p => {
+      if (p.id !== productId) return p;
+      const approvals = { ...p.approvals, chesky: { decision, at: 0, note: note || "" } };
+      // Stage transition logic
+      let stage = p.stage, waitingOn = p.waitingOn;
+      if (decision === "approve") {
+        // Move to build only if Joel also approved
+        stage = approvals.joel?.decision === "approve" ? "build" : "approval";
+        waitingOn = approvals.joel?.decision === "approve" ? null : "joel";
+      } else if (decision === "reject") {
+        stage = "archived"; waitingOn = null;
+      } else if (decision === "changes") {
+        // Stays in approval, but ball is back in Malik's court
+        waitingOn = "malik";
+      }
+      return { ...p, approvals, stage, waitingOn };
+    }));
+    // Auto-clear matching inbox entry
+    setReadIds(s => new Set([...s, "approve-" + productId]));
+    showToast(
+      decision === "approve" ? "Approved · moved to Build" :
+      decision === "changes" ? "Changes requested · sent to Malik" :
+      "Rejected · archived"
+    );
   }
   function postComment(productId, text, mentions = []) {
     setComments(c => ({ ...c, [productId]: [...(c[productId] || []),
@@ -39,14 +57,15 @@ function useAppStore() {
     showToast(mentions.length ? `Comment posted · pinged ${mentions.join(", ")}` : "Comment posted");
   }
   function addIdea(idea) {
-    const id = "I-" + (320 + products.filter(p => p.stage === "idea").length);
+    // Timestamp-based id avoids collision if any idea is later deleted
+    const id = "I-" + Date.now().toString().slice(-6);
     setProducts(ps => [...ps, { ...idea, id, stage: "idea", owner: "chesky",
       createdBy: "chesky", lastActivity: 0 }]);
     showToast("Idea captured");
   }
 
   return { route, go, back, products, mentions, readIds, markRead, toast, showToast,
-           approve, comments, postComment, addIdea };
+           approve, comments, postComment, addIdea, currentUser, setCurrentUser };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -113,9 +132,38 @@ function Toast({ toast }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Inbox builder — same as before but tagged with focus target
+// Inbox builder — role-aware. Chesky keeps the rich queue
+// (approvals + @mentions + stuck builds). Other roles dispatch
+// to RM.buildInbox(role) and we adapt the shape.
 // ─────────────────────────────────────────────────────────
-function buildInboxItems(products, mentions, readIds) {
+function buildInboxItems(products, mentions, readIds, currentUser = "chesky") {
+  if (currentUser !== "chesky") {
+    // Adapt RM.buildInbox shape → InboxRow shape
+    const kindMeta = {
+      "approval":   { kind: "Approval", bg: T.accentBg, color: T.accent, focus: { tab: "decide" } },
+      "cost-pass":  { kind: "Cost",     bg: T.warnBg,   color: T.warn,   focus: { tab: "overview" } },
+      "blocker":    { kind: "Stuck",    bg: T.errBg,    color: T.err,    focus: { tab: "streams", stream: "sourcing" } },
+      "design":     { kind: "Design",   bg: "#EBE5F8",  color: "#5C2EBE", focus: { tab: "streams", stream: "design" } },
+      "listing":    { kind: "Listing",  bg: "#DCEEF2",  color: "#0B7A8E", focus: { tab: "streams", stream: "listing" } },
+      "research":   { kind: "Niche",    bg: T.warnBg,   color: T.warn,   focus: { tab: "overview" } },
+      "idea-aged":  { kind: "Idea",     bg: T.line2,    color: T.ink2,   focus: { tab: "overview" } },
+      "mention":    { kind: "Mention",  bg: T.warnBg,   color: T.warn,   focus: { tab: "comments" } },
+    };
+    return RM.buildInbox(currentUser, products).map(it => {
+      const meta = kindMeta[it.kind] || { kind: "Task", bg: T.line2, color: T.ink2, focus: {} };
+      return {
+        id: it.id, productId: it.productId, code: it.code, brand: it.brand,
+        title: it.title, preview: it.preview,
+        fromUser: it.fromUser, at: it.at,
+        kind: meta.kind, kindBg: meta.bg, kindColor: meta.color,
+        focus: meta.focus,
+        unread: !readIds.has(it.id),
+        urgent: it.priority === 1,
+      };
+    });
+  }
+
+  // CHESKY — original rich queue
   const items = [];
   products.filter(p => p.stage === "approval" && p.waitingOn === "chesky").forEach(p => {
     items.push({
@@ -196,16 +244,15 @@ function InboxRow({ item, onTap }) {
 
 function InboxScreen({ store }) {
   const [filter, setFilter] = useS("All");
-  const items = useM(() => buildInboxItems(store.products, store.mentions, store.readIds),
-    [store.products, store.mentions, store.readIds]);
+  const items = useM(() => buildInboxItems(store.products, store.mentions, store.readIds, store.currentUser),
+    [store.products, store.mentions, store.readIds, store.currentUser]);
   const filtered = filter === "All" ? items : items.filter(i => i.kind === filter);
   const today   = filtered.filter(i => i.at < 1);
   const earlier = filtered.filter(i => i.at >= 1);
-  const counts = {
-    All: items.length, Approval: items.filter(i => i.kind === "Approval").length,
-    Mention: items.filter(i => i.kind === "Mention").length,
-    Stuck: items.filter(i => i.kind === "Stuck").length,
-  };
+  // Compute filter chips dynamically — only show kinds that have items
+  const allKinds = [...new Set(items.map(i => i.kind))];
+  const counts = { All: items.length };
+  allKinds.forEach(k => { counts[k] = items.filter(i => i.kind === k).length; });
 
   function open(item) {
     store.markRead(item.id);
@@ -219,20 +266,19 @@ function InboxScreen({ store }) {
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", margin: 0, color: T.ink }}>Inbox</h1>
           <span style={{ fontSize: 14, color: T.ink3 }}>{items.length} items</span>
+          <span style={{ marginLeft: "auto", fontSize: 12, color: T.ink3, display: "flex", alignItems: "center", gap: 6 }}>
+            <Avatar user={RM.person(store.currentUser)} size={20} />
+            {RM.person(store.currentUser).name}
+          </span>
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 10, overflowX: "auto", scrollbarWidth: "none" }}>
-          {[
-            { k: "All",      l: "All" },
-            { k: "Approval", l: "Approvals" },
-            { k: "Mention",  l: "Mentions" },
-            { k: "Stuck",    l: "Stuck" },
-          ].map(c => (
-            <button key={c.k} onClick={() => setFilter(c.k)}
+          {["All", ...allKinds].map(k => (
+            <button key={k} onClick={() => setFilter(k)}
               style={{ padding: "5px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 500,
-                background: filter === c.k ? T.ink : "#fff", color: filter === c.k ? "#fff" : T.ink2,
-                border: filter === c.k ? "0" : "0.5px solid " + T.line, whiteSpace: "nowrap",
+                background: filter === k ? T.ink : "#fff", color: filter === k ? "#fff" : T.ink2,
+                border: filter === k ? "0" : "0.5px solid " + T.line, whiteSpace: "nowrap",
                 cursor: "pointer", fontFamily: "inherit" }}>
-              {c.l} <span style={{ opacity: 0.6, marginLeft: 2 }}>{counts[c.k]}</span>
+              {k} <span style={{ opacity: 0.6, marginLeft: 2 }}>{counts[k]}</span>
             </button>
           ))}
         </div>
@@ -251,10 +297,28 @@ function InboxScreen({ store }) {
         </>
       )}
       {filtered.length === 0 && (
-        <div style={{ padding: "60px 16px", textAlign: "center", color: T.ink3 }}>
-          <div style={{ fontSize: 38 }}>✓</div>
-          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 8, color: T.ink2 }}>Inbox zero</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Nothing in this filter.</div>
+        <div style={{ padding: "56px 24px 40px", textAlign: "center", color: T.ink3 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 99, background: T.okBg,
+            color: T.ok, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 28, fontWeight: 700, margin: "0 auto 14px" }}>✓</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>
+            {items.length === 0 ? "Inbox zero" : "Nothing in " + filter}
+          </div>
+          <div style={{ fontSize: 13, marginTop: 4, color: T.ink3, lineHeight: 1.45,
+            maxWidth: 260, margin: "4px auto 0" }}>
+            {items.length === 0
+              ? "Nothing waiting on you. New approvals and @-mentions land here."
+              : "Try another filter or check the Pipeline."}
+          </div>
+          {items.length === 0 && (
+            <button onClick={() => store.go("pipeline")}
+              style={{ marginTop: 16, padding: "9px 16px", borderRadius: 99,
+                background: "#fff", border: "0.5px solid " + T.line,
+                fontSize: 12.5, fontWeight: 600, color: T.accent,
+                fontFamily: "inherit", cursor: "pointer" }}>
+              Browse pipeline →
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -355,25 +419,13 @@ function DecideTab({ p, store }) {
   return (
     <div>
       <Card accent={decided ? T.ok : T.ok}>
-        <CardLabel tone="ok">R&D Verdict</CardLabel>
+        <CardLabel tone="ok">Formulation Verdict</CardLabel>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.ok, letterSpacing: "-0.015em",
           margin: "2px 0 6px" }}>{p.nicheVerdict || "Proceed"}</div>
         <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.45 }}>{p.recommendation}</div>
       </Card>
 
-      {p.market && (
-        <Card>
-          <CardLabel>Market</CardLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {Object.entries(p.market).map(([k, v]) => (
-              <div key={k}>
-                <div style={{ fontSize: 10.5, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k}</div>
-                <div style={{ fontSize: 17, fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular", color: T.ink, marginTop: 2 }}>{v}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      <NicheDocViewer p={p} />
 
       <Card>
         <CardLabel>Dual Approval Required</CardLabel>
@@ -534,6 +586,13 @@ function ApprovalRow({ person, status, role, me }) {
 
 // ─── Overview tab ─────────────────────────────────────────
 function OverviewTab({ p }) {
+  const desktopItems = p.stage === "build"
+    ? ["BOM · vendors · lead times", "Packaging artwork (Esty)", "Listing draft (April)", "Cost roll-up"]
+    : p.stage === "production"
+    ? ["PO + tracking", "QC report", "Live thesis vs actual", "Catalog status"]
+    : p.stage === "approval"
+    ? ["Full Niche Analysis doc", "Competitor teardown", "Margin model"]
+    : null;
   return (
     <div>
       {p.synopsis && (
@@ -555,6 +614,7 @@ function OverviewTab({ p }) {
           </div>
         </Card>
       )}
+      {p.stage === "build" && <EstyWireframeHandoff p={p} />}
       {p.stage === "production" && (
         <Card>
           <CardLabel tone="accent">Production</CardLabel>
@@ -566,17 +626,30 @@ function OverviewTab({ p }) {
           </div>
         </Card>
       )}
-      <DesktopOnly />
+      <DesktopOnly items={desktopItems} />
     </div>
   );
 }
-function DesktopOnly() {
+function DesktopOnly({ items }) {
+  const list = items || ["Full BOM + sourcing", "Packaging spec sheet", "Listing draft (April)", "Live thesis vs actual"];
   return (
     <div style={{ margin: "20px 16px 0", padding: "14px 16px", borderRadius: 10,
-      background: T.bg2, border: "0.5px dashed " + T.line, textAlign: "center" }}>
-      <div style={{ fontSize: 12.5, color: T.ink3, lineHeight: 1.5 }}>
-        For BOM, packaging, listing copy, and Live thesis vs. actual,
-        <br /><span style={{ color: T.accent, fontWeight: 600 }}>open on desktop →</span>
+      background: T.bg2, border: "0.5px dashed " + T.line }}>
+      <div style={{ fontSize: 10.5, fontWeight: 600, color: T.ink3,
+        textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+        Continue on desktop
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+        {list.map((x, i) => (
+          <li key={i} style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.7,
+            display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 4, height: 4, borderRadius: 99, background: T.ink4 }}></span>
+            {x}
+          </li>
+        ))}
+      </ul>
+      <div style={{ fontSize: 11.5, color: T.accent, fontWeight: 600, marginTop: 10 }}>
+        Open dossier on desktop →
       </div>
     </div>
   );
@@ -680,6 +753,344 @@ function CommentsTab({ p, store, replyTo }) {
 function highlightMentions(text) {
   return text.replace(/@(\w+)/g,
     `<span style="color:${T.accent};font-weight:600">@$1</span>`);
+}
+
+// ─────────────────────────────────────────────────────────
+// Niche Doc — structured 6-section viewer
+// (mirrors the canonical Google Sheet: Market · Competitors ·
+//  Ingredients · Claims · Positioning · Financials)
+// Synthesizes from p.nicheSummary + adjacent product fields when
+// the rich `niche.current.parsed.content` shape isn't present.
+// ─────────────────────────────────────────────────────────
+function NicheDocViewer({ p }) {
+  const rich = p.niche?.current?.parsed?.content || null;
+  const summary = p.nicheSummary || {};
+  const sections = useM(() => buildNicheSections(p, rich, summary), [p, rich, summary]);
+  const [open, setOpen] = useS(0); // first section open by default
+  const ago = p.niche?.parsedDaysAgo != null ? RM.ago(p.niche.parsedDaysAgo)
+            : p.docUploadedDaysAgo != null  ? RM.ago(p.docUploadedDaysAgo)
+            : null;
+  const docUrl = p.niche?.docUrl || p.docUrl;
+
+  return (
+    <Card style={{ paddingBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <CardLabel>Niche Analysis</CardLabel>
+          <div style={{ fontSize: 14, fontWeight: 600, color: T.ink, marginTop: -2 }}>
+            6 sections · parsed by Opus 4.7{ago ? " · " + ago : ""}
+          </div>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99,
+          background: T.okBg, color: T.ok, letterSpacing: "0.02em" }}>
+          {summary.verdict || "GO"}
+        </span>
+      </div>
+
+      {docUrl && (
+        <div style={{ fontSize: 11, color: T.ink3, marginTop: 4, fontFamily: "ui-monospace, SFMono-Regular",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{docUrl}</div>
+      )}
+
+      <div style={{ marginTop: 10, marginLeft: -2, marginRight: -2 }}>
+        {sections.map((s, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={i} style={{ borderTop: "0.5px solid " + T.line }}>
+              <button onClick={() => setOpen(isOpen ? -1 : i)}
+                style={{ width: "100%", background: "transparent", border: 0, fontFamily: "inherit",
+                  padding: "11px 4px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
+                  textAlign: "left" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: T.ink3, minWidth: 14,
+                  fontFamily: "ui-monospace, SFMono-Regular" }}>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: T.ink }}>{s.title}</span>
+                {s.headline && (
+                  <span style={{ fontSize: 11.5, color: T.ink3, fontFamily: "ui-monospace, SFMono-Regular",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 110 }}>
+                    {s.headline}
+                  </span>
+                )}
+                <span style={{ fontSize: 13, color: T.ink3, transform: isOpen ? "rotate(90deg)" : "none",
+                  transition: "transform 0.15s" }}>›</span>
+              </button>
+              {isOpen && (
+                <div style={{ padding: "0 4px 14px", animation: "fadeIn 0.15s" }}>
+                  {s.body}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function buildNicheSections(p, rich, summary) {
+  // Helper renderers
+  const KV = ({ items }) => (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
+      {items.filter(([_, v]) => v != null && v !== "").map(([k, v]) => (
+        <div key={k}>
+          <div style={{ fontSize: 10, color: T.ink3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{k}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular",
+            color: T.ink, marginTop: 1 }}>{v}</div>
+        </div>
+      ))}
+    </div>
+  );
+  const Para = ({ children }) => (
+    <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.5, marginTop: 4 }}>{children}</div>
+  );
+  const Note = ({ children }) => (
+    <div style={{ fontSize: 11.5, color: T.ink3, lineHeight: 1.4, marginTop: 6, fontStyle: "italic" }}>{children}</div>
+  );
+  const PillRow = ({ items }) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 }}>
+      {items.map((x, i) => (
+        <span key={i} style={{ padding: "3px 8px", borderRadius: 99, background: T.bg2,
+          fontSize: 11.5, color: T.ink2, border: "0.5px solid " + T.line }}>{x}</span>
+      ))}
+    </div>
+  );
+
+  // 1 · Market
+  const market = rich?.overview?.market || p.market || {};
+  const marketItems = Object.entries(market);
+  const marketHeadline = market.sv || market.searchVolume || summary.tam || null;
+
+  // 2 · Competitors
+  const compList = rich?.competitors || [];
+  const compHeadline = (compList.length || summary.competitors) + " brands";
+
+  // 3 · Ingredients
+  const formula = rich?.formula || p.formulationGate?.proposedFormula || p.rdGate?.proposedFormula || [];
+  const ingHeadline = formula.length ? formula.length + " actives" : (p.type || null);
+
+  // 4 · Claims & Positioning
+  const claims = rich?.claims || p.claims || null;
+  const positioning = rich?.differentiation?.angle || rich?.positioning || summary.gap || p.recommendation || null;
+
+  // 5 · Financials (margin model)
+  const fin = rich?.financials || p.financials || null;
+  const finHeadline = fin?.targetRetail || fin?.cogsBudget || (summary.tam ? "TAM " + summary.tam : null);
+
+  // 6 · Verdict
+  const verdict = rich?.verdict || { recommendation: p.nicheVerdict || summary.verdict, rationale: p.recommendation };
+
+  return [
+    {
+      title: "Market sizing",
+      headline: marketHeadline,
+      body: marketItems.length > 0
+        ? <>
+            <KV items={marketItems.map(([k, v]) => [labelize(k), v])} />
+            {summary.tam && !market.revenue && <Para>Total addressable: <b>{summary.tam}</b></Para>}
+          </>
+        : <>
+            {summary.tam && <Para>Total addressable: <b>{summary.tam}</b></Para>}
+            <Note>Market data not yet captured in structured form.</Note>
+          </>,
+    },
+    {
+      title: "Competitive landscape",
+      headline: compHeadline,
+      body: compList.length > 0
+        ? <div style={{ marginTop: 8 }}>
+            {compList.slice(0, 4).map((c, i) => (
+              <div key={i} style={{ padding: "8px 0", borderBottom: i === Math.min(3, compList.length - 1) ? 0 : "0.5px solid " + T.line,
+                display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{c.brand}</div>
+                  <div style={{ fontSize: 11, color: T.ink3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.title || c.asin}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.ink, fontFamily: "ui-monospace, SFMono-Regular" }}>{c.price}</div>
+                  <div style={{ fontSize: 10.5, color: T.ink3 }}>{c.revenue || c.sales}</div>
+                </div>
+              </div>
+            ))}
+            {compList.length > 4 && <Note>+ {compList.length - 4} more in source doc</Note>}
+          </div>
+        : <>
+            <Para><b>{summary.competitors || "?"}</b> direct competitors identified.</Para>
+            {summary.gap && <Note>{summary.gap}</Note>}
+          </>,
+    },
+    {
+      title: "Ingredient stack",
+      headline: ingHeadline,
+      body: formula.length > 0
+        ? <div style={{ marginTop: 8 }}>
+            {formula.map((f, i) => (
+              <div key={i} style={{ padding: "7px 0", borderBottom: i === formula.length - 1 ? 0 : "0.5px solid " + T.line,
+                display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: T.ink, flex: 1 }}>
+                  {f.ingredient || f.name}
+                </span>
+                <span style={{ fontSize: 12, color: T.ink2, fontFamily: "ui-monospace, SFMono-Regular" }}>{f.dose}</span>
+              </div>
+            ))}
+            {rich?.formula?.[0]?.rationale && (
+              <Note>Rationale captured per ingredient. Open desktop dossier to see full notes.</Note>
+            )}
+          </div>
+        : <>
+            <Para>Format: <b>{p.type || "TBD"}</b></Para>
+            {p.synopsis && <Para>{p.synopsis}</Para>}
+            <Note>Locked formula appears here once Malik finalizes the PDS.</Note>
+          </>,
+    },
+    {
+      title: "Claims & positioning",
+      headline: claims ? "Locked" : "Drafted",
+      body: <>
+        {positioning && <Para><b>Angle.</b> {positioning}</Para>}
+        {rich?.differentiation?.whitespace && <Para><b>Whitespace.</b> {rich.differentiation.whitespace}</Para>}
+        {claims && Array.isArray(claims) && <PillRow items={claims} />}
+        {!positioning && !claims && <Note>Positioning will solidify after the cost pass + final PDS.</Note>}
+      </>,
+    },
+    {
+      title: "Margin model",
+      headline: finHeadline,
+      body: <>
+        {fin && <KV items={Object.entries(fin).map(([k, v]) => [labelize(k), v])} />}
+        {!fin && summary.tam && <Para>TAM: <b>{summary.tam}</b></Para>}
+        {!fin && p.costPass?.summary && (
+          <KV items={[
+            ["All-in / unit", "$" + p.costPass.summary.allInPerBottle?.toFixed(2)],
+            ["Ingredients", "$" + p.costPass.summary.ingredientTotal?.toFixed(2)],
+            ["Packaging", "$" + p.costPass.summary.packagingTotal?.toFixed(2)],
+            ["Cost-pass complete", (p.costPass.summary.completePct || 0) + "%"],
+          ]} />
+        )}
+        {!fin && !summary.tam && !p.costPass && <Note>Margin model gets attached once Ronel runs the cost pass.</Note>}
+      </>,
+    },
+    {
+      title: "Verdict & rationale",
+      headline: verdict?.recommendation || summary.verdict || "GO",
+      body: <>
+        <div style={{ display: "inline-block", padding: "4px 10px", borderRadius: 99,
+          background: T.okBg, color: T.ok, fontSize: 12, fontWeight: 700, marginTop: 4 }}>
+          {verdict?.recommendation || summary.verdict || "GO"}
+        </div>
+        {verdict?.rationale && <Para>{verdict.rationale}</Para>}
+        {p.approvals && (
+          <Note>
+            Joel: {fmtApproval(p.approvals.joel)} · Chesky: {fmtApproval(p.approvals.chesky)}
+          </Note>
+        )}
+      </>,
+    },
+  ];
+}
+
+function labelize(k) {
+  if (k === "sv") return "Search vol";
+  if (k === "cvr") return "CVR";
+  if (k === "tam") return "TAM";
+  if (k === "yoy") return "YoY";
+  if (k === "tiktok") return "TikTok";
+  return k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase());
+}
+function fmtApproval(a) {
+  if (!a) return "pending";
+  return a.decision === "approve" ? "approved" : a.decision;
+}
+
+// ─────────────────────────────────────────────────────────
+// Esty Wireframe Handoff — appears on the build-stage Overview
+// tab. Surfaces the locked PDS wireframe, copy direction, and
+// a one-tap action that opens her design composer for that asset.
+// ─────────────────────────────────────────────────────────
+function EstyWireframeHandoff({ p }) {
+  // Use what we have: design stream + packaging defaults + niche
+  const design = p.streams?.design;
+  if (!design) return null;
+  // Don't show if design stream is already done
+  if (design.status === "Approved" || design.pct >= 100) return null;
+
+  const esty = RM.person("esty");
+  const lockedAt = p.docUploadedDaysAgo != null
+    ? RM.ago(p.docUploadedDaysAgo)
+    : design.lastNote ? "recently" : "today";
+
+  // Asset list — derive from product type
+  const assets = [
+    { kind: "label",  title: "Bottle label",   need: "Wireframe v1 · cap front + back panel", status: "ready" },
+    { kind: "box",    title: "Folding carton", need: "Print-ready dieline + render", status: "ready" },
+    { kind: "insert", title: "Insert card",    need: "Usage + claims, A6 fold", status: "queued" },
+  ];
+
+  return (
+    <Card accent={T.accent} style={{ background: "linear-gradient(180deg, " + T.accentBg + " 0%, #fff 60%)" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <Avatar user={esty} size={32} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <CardLabel tone="accent">Wireframe Handoff · Esty</CardLabel>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink, letterSpacing: "-0.005em" }}>
+            PDS wireframe locked {lockedAt}
+          </div>
+          <div style={{ fontSize: 12, color: T.ink2, marginTop: 3, lineHeight: 1.45 }}>
+            Esty designs against the wireframe. Each asset gets a versioned upload — Chesky/Joel approve before print.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        {assets.map((a, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 0",
+            borderTop: "0.5px solid " + T.line,
+          }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 6,
+              background: a.status === "ready" ? T.accentBg : T.bg2,
+              border: "0.5px solid " + T.line,
+              color: a.status === "ready" ? T.accent : T.ink3,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, fontWeight: 700,
+            }}>
+              {a.kind === "label" ? "▭" : a.kind === "box" ? "◰" : "≡"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{a.title}</div>
+              <div style={{ fontSize: 11.5, color: T.ink3, marginTop: 1 }}>{a.need}</div>
+            </div>
+            <span style={{
+              fontSize: 10.5, fontWeight: 600, padding: "2px 7px", borderRadius: 99,
+              background: a.status === "ready" ? T.okBg : T.bg2,
+              color: a.status === "ready" ? T.ok : T.ink3,
+              letterSpacing: "0.04em", textTransform: "uppercase",
+            }}>{a.status}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <button style={{ flex: 1, background: T.bg2, border: 0, borderRadius: 10, padding: "10px 12px",
+          fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: T.ink2, cursor: "pointer" }}>
+          View wireframe
+        </button>
+        <button style={{ flex: 2, background: T.accent, border: 0, borderRadius: 10, padding: "10px 12px",
+          fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: "#fff", cursor: "pointer",
+          letterSpacing: "0.005em" }}>
+          Open Esty's queue →
+        </button>
+      </div>
+
+      <div style={{ fontSize: 10.5, color: T.ink3, marginTop: 10, textAlign: "center" }}>
+        Continue this on desktop for inline label preview + diff.
+      </div>
+    </Card>
+  );
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1003,7 +1414,8 @@ function PeopleScreen({ store }) {
 }
 
 function MeScreen({ store }) {
-  const me = RM.person("chesky");
+  const me = RM.person(store.currentUser);
+  const roles = ["chesky", "joel", "malik", "ronel", "esty", "april", "talha"];
   return (
     <div style={{ paddingBottom: 90, background: T.bg, minHeight: "100%" }}>
       <div style={{ padding: "24px 16px 16px", background: T.bg }}>
@@ -1015,6 +1427,32 @@ function MeScreen({ store }) {
           </div>
         </div>
       </div>
+
+      <div style={{ padding: "8px 16px 4px", fontSize: 11, fontWeight: 600, color: T.ink3,
+        textTransform: "uppercase", letterSpacing: "0.06em" }}>View as (demo)</div>
+      <div style={{ background: "#fff", borderTop: "0.5px solid " + T.line,
+        borderBottom: "0.5px solid " + T.line }}>
+        {roles.map((r, i) => {
+          const u = RM.person(r);
+          const active = store.currentUser === r;
+          return (
+            <button key={r} onClick={() => { store.setCurrentUser(r); store.go("inbox"); }}
+              style={{ width: "100%", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12,
+                background: "transparent", border: 0, borderTop: i === 0 ? 0 : "0.5px solid " + T.line2,
+                cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              <Avatar user={u} size={32} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: T.ink, fontWeight: active ? 600 : 400 }}>{u.name}</div>
+                <div style={{ fontSize: 11.5, color: T.ink3 }}>{u.role}</div>
+              </div>
+              {active && <span style={{ color: T.accent, fontSize: 18 }}>✓</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: "20px 16px 4px", fontSize: 11, fontWeight: 600, color: T.ink3,
+        textTransform: "uppercase", letterSpacing: "0.06em" }}>Settings</div>
       {[
         { l: "Notifications", v: "Slack + push" },
         { l: "Quiet hours", v: "10pm–7am" },
@@ -1043,14 +1481,14 @@ function TabBar({ store }) {
     { id: "inbox",    label: "Inbox",    icon: "✦" },
     { id: "pipeline", label: "Pipeline", icon: "▦" },
     { id: "ideaCapture", label: "Idea",  icon: "✜", primary: true },
-    { id: "ideas",    label: "Ideas",    icon: "◇" },
     { id: "people",   label: "People",   icon: "◐" },
+    { id: "me",       label: "Me",       icon: "◉" },
   ];
   const activeMap = { inbox: "inbox", pipeline: "pipeline", ideas: "ideas", people: "people",
     ideaCapture: "ideaCapture", productDetail: "inbox", commentComposer: "inbox", me: "me" };
   const active = activeMap[store.route.name] || "inbox";
-  const inboxCount = useM(() => buildInboxItems(store.products, store.mentions, store.readIds).length,
-    [store.products, store.mentions, store.readIds]);
+  const inboxCount = useM(() => buildInboxItems(store.products, store.mentions, store.readIds, store.currentUser).length,
+    [store.products, store.mentions, store.readIds, store.currentUser]);
 
   return (
     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 86,

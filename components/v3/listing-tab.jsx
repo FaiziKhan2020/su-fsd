@@ -16,13 +16,15 @@ const { useState: useLT, useMemo: useMLT } = React;
 // ---------- Pre-flight scorecard ----------
 function PreflightCard({ p }) {
   const l = p.listing;
-  const titleLen = l.content.title.length;
-  const bulletCount = l.content.bullets.length;
-  const longBullets = l.content.bullets.filter(b => b.length > 200).length;
-  const kwBytes = l.content.keywordBytes;
-  const main = l.images.main.length;
-  const gallery = l.images.gallery.length;
-  const aplus = l.images.aplus.length;
+  const c = l.content || { title: "", bullets: [], keywordBytes: 0 };
+  const imgs = l.images || { main: [], gallery: [], aplus: [] };
+  const titleLen = (c.title || "").length;
+  const bulletCount = (c.bullets || []).length;
+  const longBullets = (c.bullets || []).filter(b => b.length > 200).length;
+  const kwBytes = c.keywordBytes || 0;
+  const main = (imgs.main || []).length;
+  const gallery = (imgs.gallery || []).length;
+  const aplus = (imgs.aplus || []).length;
 
   const checks = [
     { label: "Title",          ok: titleLen > 80 && titleLen <= 200, val: `${titleLen}/200`, hint: titleLen > 200 ? "Over Amazon limit" : titleLen < 80 ? "Add keywords — too short" : "Within range" },
@@ -42,7 +44,7 @@ function PreflightCard({ p }) {
         <span className="meta">{greenN}/{checks.length} checks passing</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {ready
-            ? <button className="btn sm primary">Submit to Amazon</button>
+            ? <button className="btn sm primary" onClick={() => RD2.toast("Submitting listing to Amazon…", "ok")}>Submit to Amazon</button>
             : <button className="btn sm" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>Submit to Amazon</button>}
         </div>
       </div>
@@ -87,9 +89,10 @@ function StatusTrack({ l }) {
 }
 
 // ---------- Copy workspace (title / bullets / keywords) ----------
-function CopyWorkspace({ p }) {
+function CopyWorkspace({ p, onDecide }) {
   const c = p.listing.content;
   const [versionsOpen, setVersionsOpen] = useLT(false);
+  const editCopy = (patch) => onDecide && onDecide("__listingEditCopy", null, patch);
 
   // Faux version history for copy — lets April see her own iteration
   const copyVersions = [
@@ -109,7 +112,7 @@ function CopyWorkspace({ p }) {
           <button className="btn sm" onClick={() => setVersionsOpen(o => !o)}>
             {versionsOpen ? "Hide history" : `History (${copyVersions.length})`}
           </button>
-          <button className="btn sm">Save version</button>
+          <button className="btn sm" onClick={() => RD2.toast(`Saved as v${copyVersions.length + 1}`, "ok")}>Save version</button>
         </div>
       </div>
 
@@ -133,27 +136,43 @@ function CopyWorkspace({ p }) {
         value={c.title}
         max={200}
         unit="chars"
-        len={c.title.length}
+        len={(c.title || "").length}
         block
+        editable
+        onChange={(v) => editCopy({ title: v })}
       />
       <CopyField
         label="Bullet points"
         bullets={c.bullets}
+        editable
+        onBulletChange={(i, v) => {
+          const next = [...(c.bullets || [])];
+          next[i] = v;
+          editCopy({ bullets: next });
+        }}
       />
       <CopyField
         label="Backend keywords"
         value={c.keywords}
         max={250}
         unit="bytes"
-        len={c.keywordBytes}
+        len={c.keywordBytes || (c.keywords ? new Blob([c.keywords]).size : 0)}
         mono
+        editable
+        onChange={(v) => editCopy({ keywords: v, keywordBytes: new Blob([v]).size })}
       />
     </div>
   );
 }
 
-function CopyField({ label, value, max, unit, len, block, bullets, mono }) {
+function CopyField({ label, value, max, unit, len, block, bullets, mono, editable, onChange, onBulletChange }) {
   const overLimit = len > max;
+  const inputStyle = {
+    width: "100%", border: "1px solid var(--line)", borderRadius: 6,
+    padding: "8px 10px", fontFamily: mono ? "var(--mono, ui-monospace, monospace)" : "inherit",
+    fontSize: 13, lineHeight: 1.5, background: "var(--bg-1, #fff)", color: "inherit",
+    resize: "vertical", outline: "none",
+  };
   return (
     <div className="copy-field">
       <div className="copy-field-h">
@@ -166,14 +185,37 @@ function CopyField({ label, value, max, unit, len, block, bullets, mono }) {
       </div>
       {bullets ? (
         <ul className="copy-bullets">
-          {bullets.map((b, i) => (
+          {(bullets || []).map((b, i) => (
             <li key={i}>
               <span className="copy-bullet-num mono">{i+1}</span>
-              <span className="copy-bullet-text">{b}</span>
-              <span className={`copy-bullet-len mono ${b.length > 200 ? "over" : ""}`}>{b.length}/200</span>
+              {editable ? (
+                <textarea
+                  className="copy-bullet-text"
+                  style={{ ...inputStyle, minHeight: 44 }}
+                  value={b}
+                  onChange={(e) => onBulletChange && onBulletChange(i, e.target.value)}
+                />
+              ) : (
+                <span className="copy-bullet-text">{b}</span>
+              )}
+              <span className={`copy-bullet-len mono ${(b || "").length > 200 ? "over" : ""}`}>{(b || "").length}/200</span>
             </li>
           ))}
         </ul>
+      ) : editable ? (
+        block ? (
+          <textarea
+            style={{ ...inputStyle, minHeight: 60 }}
+            value={value || ""}
+            onChange={(e) => onChange && onChange(e.target.value)}
+          />
+        ) : (
+          <input
+            style={inputStyle}
+            value={value || ""}
+            onChange={(e) => onChange && onChange(e.target.value)}
+          />
+        )
       ) : (
         <div className={`copy-field-val ${mono ? "mono" : ""} ${block ? "block" : ""}`}>{value}</div>
       )}
@@ -276,23 +318,91 @@ function AssetCard({ brief, delivery, aspectClass, slotLabel, owner }) {
       <div className="asset-status">
         {delivery
           ? <span style={{ color: "var(--ok)", fontSize: 11.5, fontWeight: 500 }}>✓ Delivered · {RD2.daysAgoLabel(delivery.daysAgo)}</span>
-          : <button className="btn xs">Ping {owner?.name?.split(" ")[0]}</button>}
+          : <button className="btn xs" onClick={() => RD2.toast(`Pinged ${owner?.name?.split(" ")[0]}`)}>Ping {owner?.name?.split(" ")[0]}</button>}
       </div>
     </div>
   );
 }
 
 // ---------- Main ListingTab export ----------
-function ListingTab({ p }) {
-  if (!p.listing) {
-    return <div className="empty" style={{ padding: 30 }}>Listing kicks off in build stage.</div>;
-  }
+// ---------- Mockup gate (Phase 2 unlock) ----------
+function MockupGate({ p }) {
+  const wf = p.wireframe;
+  const labelApproved = wf?.status === "locked";
+  const m = p.listing.mockup || {};
+  const hasFront = !!m.front;
+  const hasBack = !!m.back;
+  const ready = labelApproved && hasFront && hasBack;
+
+  const items = [
+    { ok: labelApproved, label: "Label artwork approved", hint: labelApproved ? `Locked ${RD2.daysAgoLabel(wf.cheskyApprovedDaysAgo || 0)}` : "Waiting on Esty + Chesky in Packaging tab" },
+    { ok: hasFront,      label: "Front mockup uploaded",  hint: hasFront ? "Ready" : "Esty hasn't delivered the front render yet" },
+    { ok: hasBack,       label: "Back mockup uploaded",   hint: hasBack ? "Ready" : "Esty hasn't delivered the back render yet" },
+  ];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <PreflightCard p={p} />
-      <StatusTrack l={p.listing} />
-      <CopyWorkspace p={p} />
-      <VisualAssets p={p} />
+    <div className="card" style={{ borderColor: ready ? "var(--ok)" : "var(--line)", background: ready ? "oklch(98% 0.02 150)" : "var(--bg-1)" }}>
+      <div className="card-h" style={{ borderBottom: 0 }}>
+        <h3>{ready ? "✓ Phase 2 unlocked — ready to build the listing" : "Phase 2 — Submission (locked)"}</h3>
+        <span className="meta" style={{ marginLeft: "auto" }}>{items.filter(i => i.ok).length}/{items.length} ready</span>
+      </div>
+      <div style={{ padding: "10px 16px 14px", display: "grid", gap: 8 }}>
+        {items.map((it, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+            <span style={{ width: 18, height: 18, borderRadius: "50%", background: it.ok ? "var(--ok)" : "var(--bg-2)", color: it.ok ? "#fff" : "var(--ink-3)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{it.ok ? "✓" : "○"}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: it.ok ? 500 : 400 }}>{it.label}</div>
+              <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{it.hint}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ListingTab({ p, currentUser, onDecide }) {
+  if (!p.listing) {
+    return <div className="empty" style={{ padding: 30 }}>Listing research unlocks once a spec sheet is attached.</div>;
+  }
+  const wf = p.wireframe;
+  const labelApproved = wf?.status === "locked";
+  const m = p.listing.mockup || {};
+  const phase2Ready = labelApproved && m.front && m.back;
+  const phase2Done = !!(p.listing.live?.done || p.listing.approved?.done);
+  const amz = p.streams?.amazon;
+  const phase3Available = phase2Done && !!amz;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* PHASE 1 — Research (always editable) */}
+      <div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--ok)", textTransform: "uppercase" }}>Phase 1 · Research</span>
+          <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>April · always editable</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <CopyWorkspace p={p} onDecide={onDecide} />
+          <VisualAssets p={p} />
+        </div>
+      </div>
+
+      {/* PHASE 2 — Submission (gated) */}
+      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 18, opacity: phase2Ready ? 1 : 0.85 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: phase2Ready ? "var(--ok)" : "var(--ink-3)", textTransform: "uppercase" }}>Phase 2 · Submission</span>
+          <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{phase2Ready ? "Ready to submit to Amazon" : "Locked — needs label + mockup"}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <MockupGate p={p} />
+          {phase2Ready && (
+            <>
+              <PreflightCard p={p} />
+              <StatusTrack l={p.listing} />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

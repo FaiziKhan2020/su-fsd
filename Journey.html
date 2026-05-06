@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Journey · R&D Pipeline OS</title>
+<style>
+  :root {
+    --ink: #0c0e0d;
+    --paper: #f4f0e8;
+    --paper-2: #ebe5d8;
+    --rule: #1a1b18;
+    --accent: #d94f1e;
+    --accent-2: #2a5a3a;
+    --highlight: #f7d046;
+    --muted: #6a6862;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Georgia", serif;
+    font-size: 17px;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+  .sans { font-family: "Helvetica Neue", "Inter", -apple-system, sans-serif; }
+  .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; }
+
+  /* ──────────── HERO ──────────── */
+  .hero {
+    min-height: 100vh;
+    padding: 80px 8vw 60px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 40px;
+    border-bottom: 1.5px solid var(--rule);
+    position: relative;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(217,79,30,0.06), transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(42,90,58,0.06), transparent 50%),
+      var(--paper);
+  }
+  .hero-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .hero-top .lhs { display: flex; gap: 24px; }
+  .hero-top b { color: var(--ink); font-weight: 600; letter-spacing: 0.12em; }
+  .hero-title {
+    align-self: center;
+    max-width: 1200px;
+  }
+  .hero-eyebrow {
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(60px, 10vw, 156px);
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    font-weight: 500;
+    margin-bottom: 32px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .hero-sub {
+    font-size: clamp(20px, 2vw, 26px);
+    max-width: 760px;
+    line-height: 1.4;
+    color: #2a2b27;
+  }
+  .hero-sub mark {
+    background: var(--highlight);
+    padding: 0 4px;
+  }
+  .hero-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    border-top: 1px solid var(--rule);
+    padding-top: 28px;
+    font-family: "Helvetica Neue", sans-serif;
+  }
+  .hero-meta .stat {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .hero-meta .stat-num {
+    font-family: "Iowan Old Style", "Charter", Georgia, serif;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-weight: 500;
+  }
+  .hero-meta .stat-label {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .scroll-cue {
+    position: absolute;
+    bottom: 24px; left: 50%; transform: translateX(-50%);
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    animation: bob 2.4s ease-in-out infinite;
+  }
+  .scroll-cue::after {
+    content: ""; width: 1px; height: 28px; background: var(--rule);
+  }
+  @keyframes bob { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
+
+  /* ──────────── TIMELINE SPINE ──────────── */
+  .spine-wrap {
+    position: relative;
+    padding: 100px 0 200px;
+  }
+  .spine {
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 1.5px; background: var(--rule);
+    transform: translateX(-50%);
+  }
+  .spine-progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    transform-origin: left;
+    transform: scaleX(0);
+    z-index: 100;
+    transition: transform 80ms linear;
+  }
+
+  /* ──────────── ACTS ──────────── */
+  .act {
+    max-width: 1200px;
+    margin: 0 auto 200px;
+    padding: 0 6vw;
+    position: relative;
+  }
+  .act:last-child { margin-bottom: 0; }
+
+  .act-marker {
+    position: absolute;
+    left: 50%; top: 0;
+    transform: translate(-50%, -50%);
+    width: 84px; height: 84px;
+    background: var(--paper);
+    border: 1.5px solid var(--rule);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted);
+    z-index: 2;
+  }
+  .act-marker .num {
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 32px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  .act-header {
+    text-align: center;
+    padding: 80px 0 60px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .act-date {
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .act-title {
+    font-size: clamp(40px, 5vw, 68px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+  .act-title em { font-style: italic; color: var(--accent-2); }
+  .act-blurb {
+    font-size: 19px;
+    color: #2a2b27;
+    line-height: 1.5;
+  }
+
+  /* ──────────── BEAT (left/right panels) ──────────── */
+  .beat {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 60px;
+    align-items: center;
+    margin-bottom: 120px;
+    position: relative;
+  }
+  .beat-dot {
+    width: 14px; height: 14px;
+    background: var(--paper);
+    border: 1.5px solid var(--rule);
+    border-radius: 50%;
+    position: relative;
+    z-index: 2;
+  }
+  .beat-dot::after {
+    content: ""; position: absolute; inset: 3px;
+    background: var(--accent); border-radius: 50%;
+    transform: scale(0);
+    transition: transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .beat.in-view .beat-dot::after { transform: scale(1); }
+
+  .beat-content {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 600ms ease, transform 600ms ease;
+  }
+  .beat.in-view .beat-content { opacity: 1; transform: translateY(0); }
+  .beat-content.right { transition-delay: 100ms; }
+
+  .beat-text h3 {
+    font-size: 32px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+  .beat-text .when {
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .beat-text p { color: #2a2b27; margin-bottom: 12px; }
+  .beat-text p:last-child { margin-bottom: 0; }
+  .beat-text .quote {
+    font-style: italic;
+    color: var(--accent);
+    border-left: 2px solid var(--accent);
+    padding-left: 14px;
+    margin: 16px 0 8px;
+    font-size: 16px;
+  }
+  .beat.left .beat-text { text-align: right; }
+  .beat.left .beat-text .quote { border-left: none; border-right: 2px solid var(--accent); padding-left: 0; padding-right: 14px; }
+
+  /* ──────────── ARTIFACT (mock UI cards) ──────────── */
+  .artifact {
+    background: white;
+    border: 1.5px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 8px 8px 0 var(--rule);
+    overflow: hidden;
+    transition: transform 300ms ease, box-shadow 300ms ease;
+  }
+  .artifact:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 12px 12px 0 var(--rule);
+  }
+  .artifact-bar {
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--rule);
+    padding: 8px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .artifact-bar .dots { display: flex; gap: 6px; }
+  .artifact-bar .dots span {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--paper); border: 1px solid var(--rule);
+  }
+  .artifact-body { padding: 18px; min-height: 180px; }
+
+  /* === wireframe sketch === */
+  .wf {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.4;
+  }
+  .wf-box {
+    border: 1.5px dashed #999;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .wf-row { display: flex; gap: 8px; }
+  .wf-row .wf-box { flex: 1; }
+  .wf-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #999;
+    font-size: 9px;
+    margin-bottom: 6px;
+  }
+  .wf-fill {
+    height: 8px; background: repeating-linear-gradient(
+      45deg, #ddd, #ddd 3px, #f4f0e8 3px, #f4f0e8 6px
+    );
+    margin-bottom: 4px; border-radius: 1px;
+  }
+  .wf-fill.short { width: 60%; }
+  .wf-fill.thin { height: 4px; }
+
+  /* === early os shell === */
+  .os-shell {
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 12px;
+  }
+  .os-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 60px;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e8e4d8;
+    align-items: center;
+  }
+  .os-row:last-child { border-bottom: none; }
+  .os-stage {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .os-name { font-weight: 500; }
+  .os-pill {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--paper-2);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .os-pill.green { background: #d4e8d8; color: #2a5a3a; }
+  .os-pill.amber { background: #f7e8c0; color: #8a5a10; }
+  .os-pill.red { background: #f4d4cc; color: #a02818; }
+
+  /* === pds review card === */
+  .pds-card {
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 12px;
+  }
+  .pds-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e8e4d8;
+  }
+  .pds-head .av {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d94f1e, #f7d046);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 600; font-size: 11px;
+  }
+  .pds-head .name { font-weight: 600; }
+  .pds-head .role { font-size: 10px; color: var(--muted); }
+  .pds-section {
+    background: #fff8e8;
+    border-left: 3px solid var(--highlight);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .pds-section b { color: var(--ink); font-weight: 600; }
+  .pds-actions {
+    display: flex; gap: 6px;
+    margin-top: 12px;
+  }
+  .pds-btn {
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    border: 1px solid var(--rule);
+    background: white;
+    cursor: pointer;
+  }
+  .pds-btn.primary {
+    background: var(--accent-2);
+    color: white;
+    border-color: var(--accent-2);
+  }
+  .pds-btn.danger {
+    background: white;
+    color: #a02818;
+    border-color: #a02818;
+  }
+
+  /* === version history === */
+  .vh {
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 11px;
+  }
+  .vh-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e8e4d8;
+    align-items: flex-start;
+  }
+  .vh-row:last-child { border-bottom: none; }
+  .vh-tag {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2px 5px;
+    border-radius: 2px;
+    text-align: center;
+  }
+  .vh-by { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .vh-trigger {
+    background: #fff8e8;
+    border-left: 2px solid var(--highlight);
+    padding: 5px 8px;
+    margin-top: 6px;
+    font-size: 10px;
+    font-style: italic;
+    color: #6a4810;
+  }
+  .vh-action {
+    font-size: 10px;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* === compare view === */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    height: 100%;
+  }
+  .compare-pane {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 8px;
+    font-size: 9px;
+    font-family: "Helvetica Neue", sans-serif;
+  }
+  .compare-pane .v { 
+    font-family: "JetBrains Mono", monospace;
+    background: var(--ink); color: var(--paper);
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 8px;
+    margin-bottom: 6px;
+  }
+  .compare-pane h4 { font-size: 11px; margin-bottom: 4px; line-height: 1.2; }
+  .compare-pane.was h4 .strike {
+    text-decoration: line-through;
+    color: #a02818;
+  }
+  .compare-pane.now h4 .new {
+    background: #d4e8d8;
+    color: #1a3a22;
+    padding: 0 2px;
+  }
+  .compare-foot {
+    grid-column: 1 / -1;
+    background: #fff8e8;
+    border-left: 2px solid var(--highlight);
+    padding: 6px 8px;
+    font-size: 9px;
+    font-style: italic;
+    color: #6a4810;
+    margin-top: 4px;
+  }
+
+  /* ──────────── EPILOGUE ──────────── */
+  .epilogue {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 140px 8vw;
+    text-align: center;
+    border-top: 1.5px solid var(--rule);
+  }
+  .epilogue h2 {
+    font-size: clamp(50px, 8vw, 110px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-weight: 500;
+    margin-bottom: 32px;
+  }
+  .epilogue h2 em { color: var(--highlight); font-style: italic; }
+  .epilogue p {
+    font-size: 22px;
+    max-width: 640px;
+    margin: 0 auto 40px;
+    color: rgba(244,240,232,0.7);
+    line-height: 1.5;
+  }
+  .epilogue .signoff {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: rgba(244,240,232,0.5);
+    letter-spacing: 0.12em;
+  }
+  .epilogue .badges {
+    display: flex; justify-content: center; gap: 8px;
+    flex-wrap: wrap;
+    margin: 60px auto 0;
+    max-width: 800px;
+  }
+  .epilogue .badge {
+    border: 1px solid rgba(244,240,232,0.3);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-family: "Helvetica Neue", sans-serif;
+    letter-spacing: 0.06em;
+    color: rgba(244,240,232,0.8);
+  }
+
+  /* ──────────── KEYBOARD HINT ──────────── */
+  .kb-hint {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-family: "Helvetica Neue", sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    z-index: 50;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 300ms, transform 300ms;
+    pointer-events: none;
+  }
+  .kb-hint.show { opacity: 1; transform: translateY(0); }
+  .kb-hint kbd {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 1px 6px;
+    border-radius: 2px;
+    margin: 0 2px;
+    font-size: 10px;
+  }
+
+  @media (max-width: 800px) {
+    .beat { grid-template-columns: 1fr; gap: 24px; }
+    .beat-dot { display: none; }
+    .beat.left .beat-text { text-align: left; }
+    .beat.left .beat-text .quote { border-right: none; border-left: 2px solid var(--accent); padding-right: 0; padding-left: 14px; }
+    .spine, .act-marker { display: none; }
+    .hero-meta { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="spine-progress" id="progress"></div>
+
+<!-- ════════════ HERO ════════════ -->
+<section class="hero">
+  <div class="hero-top">
+    <div class="lhs">
+      <span><b>R&D Pipeline</b></span>
+      <span>Product Journey</span>
+    </div>
+    <div>Vol. 1 · 2026</div>
+  </div>
+
+  <div class="hero-title">
+    <div class="hero-eyebrow">A behind-the-scenes look</div>
+    <h1>From a sketch<br/>to a <em>shipped OS.</em></h1>
+    <p class="hero-sub">
+      What started as a rough <mark>workflow wireframe</mark> became a real operating system for the R&D team —
+      product reviews, version history, side-by-side compares, and all.
+    </p>
+  </div>
+
+  <div class="hero-meta">
+    <div class="stat">
+      <div class="stat-num">7</div>
+      <div class="stat-label">Major chapters</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">23+</div>
+      <div class="stat-label">Iterations</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">3</div>
+      <div class="stat-label">Versions shipped</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">v3</div>
+      <div class="stat-label">Live today</div>
+    </div>
+  </div>
+
+  <div class="scroll-cue">Scroll to begin</div>
+</section>
+
+<!-- ════════════ TIMELINE ════════════ -->
+<div class="spine-wrap">
+  <div class="spine"></div>
+
+  <!-- ━━━ ACT 1 ━━━ -->
+  <section class="act" data-act="1">
+    <div class="act-marker"><span class="num">01</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter One</div>
+      <h2 class="act-title">A pipeline on <em>napkins.</em></h2>
+      <p class="act-blurb">
+        The brief was simple and impossible: make the messy R&D pipeline legible. We started where every honest design starts — boxes, arrows, and best guesses.
+      </p>
+    </div>
+
+    <div class="beat left">
+      <div class="beat-content beat-text">
+        <div class="when">First sketch · early days</div>
+        <h3>The schematic.</h3>
+        <p>
+          Before any pixels, we mapped what a product actually goes through:
+          niche scoping, formulation, regulatory, costing, label, batch.
+        </p>
+        <p class="quote">"Just put the stages on a wall and see what falls off."</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content right">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>pipeline-schematic.html</span>
+            <span>v1</span>
+          </div>
+          <div class="artifact-body wf">
+            <div class="wf-label">Pipeline · 6 stages</div>
+            <div class="wf-row">
+              <div class="wf-box">
+                <div class="wf-label">01 Niche</div>
+                <div class="wf-fill"></div>
+                <div class="wf-fill short"></div>
+              </div>
+              <div class="wf-box">
+                <div class="wf-label">02 Spec</div>
+                <div class="wf-fill"></div>
+                <div class="wf-fill thin"></div>
+              </div>
+              <div class="wf-box">
+                <div class="wf-label">03 Reg</div>
+                <div class="wf-fill short"></div>
+                <div class="wf-fill thin"></div>
+              </div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-box">
+                <div class="wf-label">04 Cost</div>
+                <div class="wf-fill"></div>
+              </div>
+              <div class="wf-box">
+                <div class="wf-label">05 Label</div>
+                <div class="wf-fill short"></div>
+                <div class="wf-fill thin"></div>
+              </div>
+              <div class="wf-box">
+                <div class="wf-label">06 Batch</div>
+                <div class="wf-fill thin"></div>
+                <div class="wf-fill short"></div>
+              </div>
+            </div>
+            <div class="wf-label" style="margin-top:8px">→ next: who owns each gate?</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beat right">
+      <div class="beat-content beat-text">
+        <div class="when">Mobile reality check</div>
+        <h3>Roles, on a phone.</h3>
+        <p>
+          A pipeline isn't a wall chart — it's something Ronel checks at 8am and Malik reviews on the bus. The mobile sketch made the roles real.
+        </p>
+        <p class="quote">"Ronel needs to see HER queue, not the whole org."</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>R&D Pipeline Mobile.html</span>
+            <span>iOS</span>
+          </div>
+          <div class="artifact-body os-shell">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Ronel's queue · 4</div>
+            <div class="os-row">
+              <span class="os-stage">Spec</span>
+              <span class="os-name">Vagus Tone · 30ct</span>
+              <span class="os-pill amber">Today</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Niche</span>
+              <span class="os-name">Vagus Tone</span>
+              <span class="os-pill">2d</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Reg</span>
+              <span class="os-name">Mito Reset</span>
+              <span class="os-pill green">Done</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Spec</span>
+              <span class="os-name">Sleep Stack</span>
+              <span class="os-pill red">Late</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ ACT 2 ━━━ -->
+  <section class="act" data-act="2">
+    <div class="act-marker"><span class="num">02</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter Two</div>
+      <h2 class="act-title">The first <em>OS</em> arrives.</h2>
+      <p class="act-blurb">
+        Wireframes graduated. We built a real shell — desk view, role-based homes, and a feed that looked like something a person could actually use to run their day.
+      </p>
+    </div>
+
+    <div class="beat left">
+      <div class="beat-content beat-text">
+        <div class="when">v1 · the shell</div>
+        <h3>One desk, every product.</h3>
+        <p>
+          The OS gave the pipeline a shape: a desk view per product, a feed of what changed, and stage gates with owners.
+        </p>
+        <p>
+          Suddenly the question wasn't "what's the status?" — it was "what's blocking?"
+        </p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content right">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>R&D Pipeline OS.html</span>
+            <span>v1</span>
+          </div>
+          <div class="artifact-body os-shell">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <strong style="font-size:14px">April · Amazon Verdict</strong>
+              <span class="os-pill amber">Reg pending</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Niche</span>
+              <span class="os-name">Locked · Ronel</span>
+              <span class="os-pill green">✓</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Spec</span>
+              <span class="os-name">Draft · Ronel</span>
+              <span class="os-pill green">✓</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Reg</span>
+              <span class="os-name">In review · April</span>
+              <span class="os-pill amber">…</span>
+            </div>
+            <div class="os-row">
+              <span class="os-stage">Cost</span>
+              <span class="os-name">— blocked —</span>
+              <span class="os-pill">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ ACT 3 ━━━ -->
+  <section class="act" data-act="3">
+    <div class="act-marker"><span class="num">03</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter Three</div>
+      <h2 class="act-title">v2 — <em>roles get real.</em></h2>
+      <p class="act-blurb">
+        Different humans need different homes. v2 split the OS into role-shaped views: Ronel sees niches, April sees regulatory verdicts, Malik sees pricing pressure. One pipeline, many lenses.
+      </p>
+    </div>
+
+    <div class="beat right">
+      <div class="beat-content beat-text">
+        <div class="when">April's view · regulatory</div>
+        <h3>Verdict entry.</h3>
+        <p>
+          April's job is yes / no / yes-but. We gave her a single screen with the claim, the source, and a verdict box. No noise.
+        </p>
+        <p class="quote">"Stop making me click into the desk just to mark something safe."</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>April · Verdict</span>
+            <span>v2</span>
+          </div>
+          <div class="artifact-body pds-card">
+            <div class="pds-head">
+              <div class="av" style="background:linear-gradient(135deg,#2a5a3a,#7ab098)">A</div>
+              <div>
+                <div class="name">April Chen</div>
+                <div class="role">Regulatory · 5 awaiting verdict</div>
+              </div>
+            </div>
+            <div class="pds-section">
+              <b>Claim:</b> "Supports healthy metabolic balance."<br/>
+              <b>Source:</b> Mito Reset · spec v2<br/>
+              <b>Risk:</b> moderate — FDA structure/function language ok if hedged
+            </div>
+            <div class="pds-actions">
+              <button class="pds-btn primary">✓ Approve</button>
+              <button class="pds-btn">Revise wording</button>
+              <button class="pds-btn danger">✕ Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beat left">
+      <div class="beat-content beat-text">
+        <div class="when">Malik's view · costing</div>
+        <h3>Cost-pass, on one card.</h3>
+        <p>
+          For Malik, "is this product viable?" was 4 spreadsheets. We collapsed it into one card with COGS, batch yield, and margin headroom.
+        </p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content right">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>Malik · Cost pass</span>
+            <span>v2</span>
+          </div>
+          <div class="artifact-body" style="font-family:'Helvetica Neue',sans-serif;font-size:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <strong>Mito Reset · 60ct</strong>
+              <span class="os-pill green">PASS</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:11px">
+              <span style="color:var(--muted)">COGS / bottle</span><b>$8.42</b>
+              <span style="color:var(--muted)">Target wholesale</span><b>$24.00</b>
+              <span style="color:var(--muted)">Margin</span><b style="color:var(--accent-2)">64.9%</b>
+              <span style="color:var(--muted)">Batch yield</span><b>5,000 bottles</b>
+            </div>
+            <div style="margin-top:10px;padding:8px;background:#d4e8d8;border-left:3px solid var(--accent-2);font-size:11px;color:#1a3a22">
+              ✓ Above 55% floor. Cleared to label.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ ACT 4 ━━━ -->
+  <section class="act" data-act="4">
+    <div class="act-marker"><span class="num">04</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter Four</div>
+      <h2 class="act-title">v3 — <em>the PDS</em> moment.</h2>
+      <p class="act-blurb">
+        The biggest leap: PDS reviews. Specs aren't paperwork — they're conversations. We made the OS host the conversation, with sectioned reviews, inline send-backs, and a paper trail.
+      </p>
+    </div>
+
+    <div class="beat right">
+      <div class="beat-content beat-text">
+        <div class="when">Section-by-section review</div>
+        <h3>Reviewers <em>annotate,</em> not approve-or-reject.</h3>
+        <p>
+          Every PDS is broken into sections. Reviewers can flag, suggest, or send back any single section without nuking the whole document.
+        </p>
+        <p class="quote">"I love the formulation. The hero claim is what I want changed."</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>PDS · sectioned review</span>
+            <span>v3</span>
+          </div>
+          <div class="artifact-body pds-card">
+            <div class="pds-head">
+              <div class="av" style="background:linear-gradient(135deg,#1f4068,#5a8cb8)">C</div>
+              <div>
+                <div class="name">Chesky · CEO</div>
+                <div class="role">Reviewing PDS v1 · Mito Reset</div>
+              </div>
+            </div>
+            <div class="pds-section">
+              <b>§ Hero claim</b> · <span style="color:#a02818">flagged</span><br/>
+              <span style="font-style:italic;color:#6a4810">"Hero claim too aggressive — soften to FDA-safe wording."</span>
+            </div>
+            <div class="pds-section" style="background:#d4e8d8;border-left-color:var(--accent-2)">
+              <b>§ Formulation</b> · <span style="color:var(--accent-2)">approved</span>
+            </div>
+            <div class="pds-section">
+              <b>§ Pricing</b> · <span style="color:#8a5a10">suggest</span><br/>
+              <span style="font-style:italic;color:#6a4810">"Try $29.99 to anchor against Pendulum."</span>
+            </div>
+            <div class="pds-actions">
+              <button class="pds-btn danger">↩ Send back to Ronel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beat left">
+      <div class="beat-content beat-text">
+        <div class="when">Version history · revision-aware</div>
+        <h3>Every <em>v</em> remembers why.</h3>
+        <p>
+          Each version is stamped with the inline note that triggered it. The chain reads top-to-bottom like a story: v1 → notes → v2 (addressing notes) → ...
+        </p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content right">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>Version history</span>
+            <span>3 versions</span>
+          </div>
+          <div class="artifact-body vh">
+            <div class="vh-row">
+              <span class="vh-tag">v3</span>
+              <div>
+                <strong>Latest · Ronel</strong>
+                <div class="vh-by">May 3 · Generated with Claude PDS</div>
+                <div class="vh-trigger">Triggered: "Add capsule MOQ math to cost-pass card."</div>
+              </div>
+              <span class="vh-action">Compare v2</span>
+            </div>
+            <div class="vh-row">
+              <span class="vh-tag">v2</span>
+              <div>
+                <strong>Ronel</strong>
+                <div class="vh-by">May 1 · Generated with Claude PDS</div>
+                <div class="vh-trigger">Triggered: "Hero claim too aggressive — soften to FDA-safe wording."</div>
+              </div>
+              <span class="vh-action">Compare v1</span>
+            </div>
+            <div class="vh-row">
+              <span class="vh-tag">v1</span>
+              <div>
+                <strong>Ronel · initial draft</strong>
+                <div class="vh-by">Apr 28 · Generated with Claude PDS</div>
+              </div>
+              <span style="font-size:10px;color:var(--muted)">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beat right">
+      <div class="beat-content beat-text">
+        <div class="when">Compare view</div>
+        <h3>See the <em>diff,</em> not the file.</h3>
+        <p>
+          Click "Compare with v1" and the two versions sit side-by-side, with the trigger note highlighted at the bottom. The conversation made visible.
+        </p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>v2 vs v1 · hero claim</span>
+            <span>diff</span>
+          </div>
+          <div class="artifact-body" style="background:var(--paper-2)">
+            <div class="compare">
+              <div class="compare-pane was">
+                <div class="v">v1</div>
+                <h4><span class="strike">Reverses metabolic damage. 200% better cellular energy.</span></h4>
+                <p style="color:var(--muted);font-size:9px">Risk: HIGH · disease claim</p>
+              </div>
+              <div class="compare-pane now">
+                <div class="v">v2</div>
+                <h4><span class="new">Supports healthy metabolic balance and cellular energy.</span></h4>
+                <p style="color:var(--accent-2);font-size:9px">Risk: low · structure/function</p>
+              </div>
+              <div class="compare-foot">
+                Triggered by Chesky: "Hero claim too aggressive — soften to FDA-safe wording."
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ ACT 5 ━━━ -->
+  <section class="act" data-act="5">
+    <div class="act-marker"><span class="num">05</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter Five</div>
+      <h2 class="act-title">The thousand <em>papercuts.</em></h2>
+      <p class="act-blurb">
+        Between major versions, dozens of small fixes — the kind nobody writes a changelog for. Together, they're what made the thing feel real.
+      </p>
+    </div>
+
+    <div class="beat left">
+      <div class="beat-content beat-text">
+        <div class="when">Papercuts, picked off</div>
+        <h3>The unsexy list.</h3>
+        <p>Each one took 20 minutes. None of them had a meeting. All of them mattered.</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content right">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>changelog · papercuts</span>
+            <span>14 fixes</span>
+          </div>
+          <div class="artifact-body" style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7">
+            <div>✓ <span style="color:var(--muted)">Killed redundant upload affordance</span></div>
+            <div>✓ <span style="color:var(--muted)">Send-backs now thread under PDS sections</span></div>
+            <div>✓ <span style="color:var(--muted)">Type filter chips on niche docs</span></div>
+            <div>✓ <span style="color:var(--muted)">Mobile feed: collapse multi-stage rows</span></div>
+            <div>✓ <span style="color:var(--muted)">Verdict entry: keyboard-first</span></div>
+            <div>✓ <span style="color:var(--muted)">"Address notes & resubmit" — two paths</span></div>
+            <div>✓ <span style="color:var(--muted)">Version chain shows trigger quote</span></div>
+            <div>✓ <span style="color:var(--muted)">Compare-with-prev on every v2+</span></div>
+            <div>✓ <span style="color:var(--muted)">Cost-pass card · margin floor highlight</span></div>
+            <div>↪ <span style="color:var(--accent)">Next: capsule MOQ math (in flight)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ ACT 6 ━━━ -->
+  <section class="act" data-act="6">
+    <div class="act-marker"><span class="num">06</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter Six</div>
+      <h2 class="act-title">What the team <em>actually</em> says now.</h2>
+      <p class="act-blurb">A few quotes from the people the OS is for. The compliment we wanted was "I forgot it's there." We got close.</p>
+    </div>
+
+    <div class="beat right">
+      <div class="beat-content beat-text">
+        <div class="when">Ronel · Formulator</div>
+        <h3 style="font-style:italic;font-weight:500">"I'm not chasing approvals anymore."</h3>
+        <p>"v3 actually shows me what's stuck on what. I wake up, see two send-backs, fix them, and the chain just keeps moving."</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content">
+        <div class="artifact" style="background:linear-gradient(135deg,#fff,#fef8ee)">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>quote · Ronel</span>
+            <span>★★★★★</span>
+          </div>
+          <div class="artifact-body" style="font-family:'Iowan Old Style',Georgia,serif;font-size:18px;line-height:1.4;font-style:italic;color:#2a2b27;display:flex;align-items:center;justify-content:center;min-height:140px;text-align:center">
+            "The send-back thread is the killer feature.<br/>Don't ever take it away."
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beat left">
+      <div class="beat-content beat-text">
+        <div class="when">Malik · Ops</div>
+        <h3 style="font-style:italic;font-weight:500">"One card replaced four spreadsheets."</h3>
+        <p>"I used to dread the cost-pass call. Now I open the card, glance at the margin number, and either green-light it or kick it back. 30 seconds."</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content right">
+        <div class="artifact" style="background:linear-gradient(135deg,#fff,#eef4ee)">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>quote · Malik</span>
+            <span>★★★★★</span>
+          </div>
+          <div class="artifact-body" style="font-family:'Iowan Old Style',Georgia,serif;font-size:18px;line-height:1.4;font-style:italic;color:#2a2b27;display:flex;align-items:center;justify-content:center;min-height:140px;text-align:center">
+            "I forgot the OS is there.<br/>That's the highest compliment I have."
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ ACT 7 ━━━ -->
+  <section class="act" data-act="7">
+    <div class="act-marker"><span class="num">07</span></div>
+    <div class="act-header">
+      <div class="act-date">Chapter Seven · today</div>
+      <h2 class="act-title">Where we <em>are</em> right now.</h2>
+      <p class="act-blurb">v3 is live. Capsule MOQ math is the next stop. After that — who knows. But the spine is in place.</p>
+    </div>
+
+    <div class="beat right">
+      <div class="beat-content beat-text">
+        <div class="when">In flight</div>
+        <h3>The next four todos.</h3>
+        <p>Capsule MOQ math gets folded into the cost-pass card so Malik can stop asking Ronel "how many capsules per bottle, again?" every Tuesday.</p>
+      </div>
+      <div class="beat-dot"></div>
+      <div class="beat-content">
+        <div class="artifact">
+          <div class="artifact-bar">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>todo · capsule MOQ</span>
+            <span>4 open</span>
+          </div>
+          <div class="artifact-body" style="font-family:'Helvetica Neue',sans-serif;font-size:12px;line-height:1.7">
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--paper-2);padding:1px 5px;border-radius:2px">184</span>
+              <span>Parse <code style="background:var(--paper-2);padding:1px 4px;font-size:10px">capsulesPerServing</code> from spec sheet → derive bottle yield</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--paper-2);padding:1px 5px;border-radius:2px">185</span>
+              <span>Surface MOQ math in cost-pass card (capsules only)</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--paper-2);padding:1px 5px;border-radius:2px">186</span>
+              <span>Make capsulesPerServing editable from the cost-pass card if not yet on spec</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--paper-2);padding:1px 5px;border-radius:2px">187</span>
+              <span>Wire derived bottle count into batch assumption (replace hardcoded 5,000)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ════════════ EPILOGUE ════════════ -->
+<section class="epilogue">
+  <h2>From <em>"what is this?"</em><br/>to "I forgot it's there."</h2>
+  <p>That's the whole arc. A pipeline went from a sketch on a wall to a system the team forgets is a system.</p>
+  <div class="signoff">— Built with you, May 2026 —</div>
+  <div class="badges">
+    <span class="badge">Wireframes</span>
+    <span class="badge">OS v1</span>
+    <span class="badge">OS v2</span>
+    <span class="badge">OS v3 · current</span>
+    <span class="badge">PDS reviews</span>
+    <span class="badge">Send-backs</span>
+    <span class="badge">Version history</span>
+    <span class="badge">Compare diff</span>
+    <span class="badge">Mobile</span>
+    <span class="badge">Role homes</span>
+    <span class="badge">Cost-pass cards</span>
+    <span class="badge">Verdict entry</span>
+  </div>
+</section>
+
+<div class="kb-hint" id="kbHint">
+  Tip: press <kbd>↓</kbd> to jump chapters · <kbd>T</kbd> for top
+</div>
+
+<script>
+  // Progress bar
+  const progress = document.getElementById('progress');
+  const beats = document.querySelectorAll('.beat');
+  const acts = document.querySelectorAll('.act');
+
+  function onScroll() {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const pct = Math.min(1, Math.max(0, window.scrollY / max));
+    progress.style.transform = `scaleX(${pct})`;
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // Reveal beats on scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) e.target.classList.add('in-view');
+    });
+  }, { threshold: 0.2 });
+  beats.forEach((b) => io.observe(b));
+
+  // Show keyboard hint after 4s
+  setTimeout(() => {
+    document.getElementById('kbHint').classList.add('show');
+    setTimeout(() => document.getElementById('kbHint').classList.remove('show'), 5000);
+  }, 4000);
+
+  // Keyboard nav
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      const y = window.scrollY;
+      const next = [...acts].find((a) => a.getBoundingClientRect().top > 50);
+      if (next) next.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      const prev = [...acts].reverse().find((a) => a.getBoundingClientRect().top < -50);
+      if (prev) prev.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (e.key === 't' || e.key === 'T') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@ const { useMemo: useMSD } = React;
 
 // Stage-specific dashboard — replaces the kanban-board view when clicking a stage in the left rail.
 // Each stage gets a different layout that surfaces what matters AT THAT STAGE.
-function StageDashboard({ stageId, products, onOpen }) {
+function StageDashboard({ stageId, products, onOpen, onDecide }) {
   const stage = RD2.stage(stageId);
   const items = products.filter(p => p.stage === stageId);
   const bench = PIPELINE_DATA.CYCLE_BENCHMARKS[stageId];
@@ -44,15 +44,17 @@ function StageDashboard({ stageId, products, onOpen }) {
 
       {/* Stage-specific top sections */}
       {stageId === "approval" && <ApprovalDash items={items} onOpen={onOpen} />}
+      {stageId === "rd"       && <RDDash items={items} onOpen={onOpen} />}
       {stageId === "build"    && <BuildDash items={items} onOpen={onOpen} />}
       {stageId === "production" && <BuildDash items={items} onOpen={onOpen} />}
-      {stageId === "niche"    && <NicheDash items={items} onOpen={onOpen} />}
+      {stageId === "niche"    && <NicheDash items={items} onOpen={onOpen} onDecide={onDecide} />}
       {stageId === "idea"     && <IdeaDash items={items} onOpen={onOpen} />}
       {stageId === "launched" && <LaunchedDash items={items} onOpen={onOpen} />}
-      {(stageId === "hold" || stageId === "killed") && <SimpleList items={items} onOpen={onOpen} />}
+      {(stageId === "hold") && <RD2.HoldDash items={items} onOpen={onOpen} />}
+      {(stageId === "killed") && <RD2.KilledDash items={items} onOpen={onOpen} />}
 
       {/* Generic over-target / on-pace fallback for stages without a custom view */}
-      {!["approval","build","production","niche","idea","launched","hold","killed"].includes(stageId) && (
+      {!["approval","rd","build","production","niche","idea","launched","hold","killed"].includes(stageId) && (
         <>
           {over.length > 0 && (
             <div className="stage-dash-section">
@@ -76,7 +78,7 @@ function StageDashboard({ stageId, products, onOpen }) {
 
 // ===== Niche stage =====
 // Three buckets: researching / parsed / total. Show doc state, owner, days in.
-function NicheDash({ items, onOpen }) {
+function NicheDash({ items, onOpen, onDecide }) {
   const researching = items.filter(p => p.nicheSubState === "researching");
   const parsed      = items.filter(p => p.nicheSubState === "parsed");
   return (
@@ -84,9 +86,9 @@ function NicheDash({ items, onOpen }) {
       {parsed.length > 0 && (
         <div className="stage-dash-section">
           <div className="stage-dash-section-h" style={{ color: "var(--ok)" }}>
-            ✓ Doc parsed · ready to submit for review <span className="count">{parsed.length}</span>
+            ✓ Doc parsed · ready for cost pass <span className="count">{parsed.length}</span>
           </div>
-          <DashList items={parsed} onOpen={onOpen} kind="niche" />
+          <DashList items={parsed} onOpen={onOpen} kind="niche" onDecide={onDecide} />
         </div>
       )}
       <div className="stage-dash-section">
@@ -123,6 +125,48 @@ function ApprovalDash({ items, onOpen }) {
           <DashList items={other} onOpen={onOpen} kind="approval" />
         </div>
       )}
+    </>
+  );
+}
+
+// ===== Formulation stage =====
+// Cost-pass items lead (Ronel's queue), then group the rest by rdGate.status.
+function RDDash({ items, onOpen }) {
+  // Cost-pass items = PDS locked, Joel hasn't completed the pass yet.
+  const costPassItems = items.filter(p => p.rdGate?.pdsLocked && p.costPass?.status !== "done");
+  const otherItems    = items.filter(p => !(p.rdGate?.pdsLocked && p.costPass?.status !== "done"));
+  const buckets = {
+    "approved":            { label: "✓ Sample approved · ready for Build", tone: "ok",   items: [] },
+    "iterating":           { label: "Iterating on samples", tone: "active", items: [] },
+    "sample-en-route":     { label: "Sample en route to Talha / Ronel",  tone: "active", items: [] },
+    "samples-en-route":    { label: "Manufacturer samples en route",     tone: "active", items: [] },
+    "samples-shipped-to-talha": { label: "Ingredients shipped to Talha",  tone: "active", items: [] },
+    "engaged":             { label: "Manufacturer engaged · awaiting first sample", tone: "active", items: [] },
+    "not-yet-engaged":     { label: "Not yet engaged", tone: "warn", items: [] },
+    "rejected":            { label: "Rejected", tone: "err", items: [] },
+  };
+  otherItems.forEach(p => {
+    const s = p.rdGate?.status || "not-yet-engaged";
+    if (buckets[s]) buckets[s].items.push(p); else (buckets["not-yet-engaged"].items.push(p));
+  });
+  return (
+    <>
+      {costPassItems.length > 0 && (
+        <div className="stage-dash-section">
+          <div className="stage-dash-section-h" style={{ color: "var(--warn)" }}>
+            Cost pass · Ronel running $/bottle <span className="count">{costPassItems.length}</span>
+          </div>
+          <DashList items={costPassItems} onOpen={onOpen} kind="rd" />
+        </div>
+      )}
+      {Object.entries(buckets).filter(([,b]) => b.items.length).map(([k, b]) => (
+        <div className="stage-dash-section" key={k}>
+          <div className="stage-dash-section-h" style={{ color: b.tone === "ok" ? "var(--ok)" : b.tone === "err" ? "var(--err)" : b.tone === "warn" ? "var(--warn)" : undefined }}>
+            {b.label} <span className="count">{b.items.length}</span>
+          </div>
+          <DashList items={b.items} onOpen={onOpen} kind="rd" />
+        </div>
+      ))}
     </>
   );
 }
@@ -197,16 +241,16 @@ function SimpleList({ items, onOpen }) {
 }
 
 // ===== Generic dense list row =====
-function DashList({ items, onOpen, bench, kind }) {
+function DashList({ items, onOpen, bench, kind, onDecide }) {
   if (!items?.length) return <div className="stage-dash-empty" style={{ padding: 16 }}>None.</div>;
   return (
     <div className="stage-dash-list">
-      {items.map(p => <DashRow key={p.id} p={p} onOpen={onOpen} bench={bench || PIPELINE_DATA.CYCLE_BENCHMARKS[p.stage]} kind={kind} />)}
+      {items.map(p => <DashRow key={p.id} p={p} onOpen={onOpen} bench={bench || PIPELINE_DATA.CYCLE_BENCHMARKS[p.stage]} kind={kind} onDecide={onDecide} />)}
     </div>
   );
 }
 
-function DashRow({ p, onOpen, bench, kind }) {
+function DashRow({ p, onOpen, bench, kind, onDecide }) {
   const owner = RD2.person(p.owner);
   const age = p.stageAge || 0;
   const overdue = bench && age > bench.target;
@@ -230,6 +274,22 @@ function DashRow({ p, onOpen, bench, kind }) {
         if (slowest) line = `${slowest[0]} ${slowest[1].pct}% · ${slowest[1].lastNote}`;
       }
     }
+  } else if (kind === "rd") {
+    const g = p.rdGate;
+    if (!g) line = "Not started";
+    else if (g.ownerKind === "formulator") {
+      const last = g.sampleRounds?.[g.sampleRounds.length - 1];
+      if (g.status === "approved")         line = `Talha-locked formula · ${g.flavorRecommended || "flavor TBD"} · ready to advance`;
+      else if (last?.verdict === "pending") line = `Round ${last.round} — ${last.flavor} · awaiting taste-test`;
+      else if (last)                        line = `Round ${last.round} — ${last.feedback || "no notes"}`;
+      else if (g.samplesToTalha?.length)    line = `Ingredients shipped to Talha (${g.samplesToTalha.length}) · awaiting blend`;
+      else                                  line = "Setup pending";
+    } else { // mfg-owned
+      const m = g.mfgEngagement || [];
+      if (g.status === "approved")  line = `Sample approved · ${m[0]?.contact || "mfg"} wins`;
+      else if (m.length)            line = m.map(x => `${x.contact}: ${x.status}`).join(" · ");
+      else                          line = "Awaiting manufacturer engagement";
+    }
   } else if (kind === "idea") {
     line = p.synopsis;
   } else if (kind === "launched") {
@@ -240,11 +300,12 @@ function DashRow({ p, onOpen, bench, kind }) {
 
   // Per-stream dot row for build/production
   const streamDots = (kind === "build" && p.streams) && (
-    <div className="stage-dash-row-streams" title="sourcing · design · listing">
-      {["sourcing","design","listing"].map(k => {
+    <div className="stage-dash-row-streams" title="sourcing · design · listing · amazon">
+      {["sourcing","design","listing","amazon"].map(k => {
         const s = p.streams[k]; if (!s) return <div key={k} className="stage-dash-row-stream-dot"></div>;
-        const tone = s.status === "Backorder" || s.status === "Stuck" ? "err"
-          : s.status === "Approved" || s.status === "Ordered" ? "ok" : "";
+        const tone = s.status === "Backorder" || s.status === "Stuck" || s.status === "Hard pull" ? "err"
+          : s.status === "Approved" || s.status === "Ordered" || s.status === "Allowed — clean" ? "ok"
+          : s.status === "GMP required" || s.status === "Testing required" ? "warn" : "";
         return (
           <div key={k} className={`stage-dash-row-stream-dot ${tone}`} title={`${k}: ${s.pct}% ${s.status}`}>
             <div className="fill" style={{ right: `${100 - s.pct}%` }}></div>
@@ -254,8 +315,12 @@ function DashRow({ p, onOpen, bench, kind }) {
     </div>
   );
 
+  // Niche-parsed → expose Submit-for-Review directly on the row (skip the dossier hop)
+  const showSubmitReview = kind === "niche" && p.nicheSubState === "parsed";
+
   return (
-    <button className="stage-dash-row" onClick={() => onOpen(p.id)}>
+    <div className="stage-dash-row" onClick={() => onOpen(p.id)} role="button" tabIndex={0}
+         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(p.id); }}>
       <div className="stage-dash-row-main">
         <div className="stage-dash-row-meta1">
           <span className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.code}</span>
@@ -267,16 +332,21 @@ function DashRow({ p, onOpen, bench, kind }) {
         {line && <div className="stage-dash-row-line">{line}</div>}
       </div>
       {streamDots}
-      <div className="stage-dash-row-owner">
-        {owner && <RD2.Avatar user={owner} size="sm" />}
-        <span>{owner?.name}</span>
-      </div>
+      <div className="stage-dash-row-owner" style={{ visibility: "hidden" }} />
       <div className={`stage-dash-row-age ${ageTone}`}>
         {bench
           ? (overdue ? `${age}d · +${age - bench.target}d` : `${age}d / ${bench.target}d`)
           : `${age}d`}
       </div>
-    </button>
+      {showSubmitReview && onDecide && (
+        <button
+          className="btn sm primary"
+          style={{ marginLeft: 8, whiteSpace: "nowrap" }}
+          onClick={(e) => { e.stopPropagation(); onDecide(p.id, "__submitForReview"); RD2.toast?.(`Submitted for niche review`, "ok"); }}>
+          Submit for review →
+        </button>
+      )}
+    </div>
   );
 }
 

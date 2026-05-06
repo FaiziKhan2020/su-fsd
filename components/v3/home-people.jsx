@@ -241,6 +241,9 @@ function People({ onPersonClick }) {
           );
         })}
       </div>
+
+      {/* Vendor scorecard — sits below team load, surfaces aggregate vendor performance */}
+      {RD2.VendorScorecard && <div style={{ marginTop: 32 }}><RD2.VendorScorecard /></div>}
     </div>
   );
 }

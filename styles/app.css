@@ -6,34 +6,34 @@
   --font-sans: "Inter Tight", "Inter", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
 
-  /* Warm neutrals — light mode */
-  --bg:        oklch(98.5% 0.005 80);
-  --bg-2:      oklch(96.5% 0.006 80);
-  --bg-3:      oklch(94% 0.008 80);
-  --panel:     oklch(99.5% 0.003 80);
-  --line:      oklch(90% 0.008 80);
-  --line-2:    oklch(85% 0.01 80);
-  --ink:       oklch(22% 0.012 80);
-  --ink-2:     oklch(40% 0.012 80);
-  --ink-3:     oklch(58% 0.012 80);
-  --ink-4:     oklch(72% 0.01 80);
+  /* Cool-warm neutrals — light mode (slightly cooler ink, warmer paper) */
+  --bg:        oklch(99% 0.004 85);
+  --bg-2:      oklch(97% 0.005 85);
+  --bg-3:      oklch(94.5% 0.006 85);
+  --panel:     oklch(100% 0 0);
+  --line:      oklch(91% 0.006 85);
+  --line-2:    oklch(85% 0.008 85);
+  --ink:       oklch(18% 0.015 260);
+  --ink-2:     oklch(36% 0.014 260);
+  --ink-3:     oklch(55% 0.012 260);
+  --ink-4:     oklch(70% 0.008 260);
 
-  /* Accent — desaturated indigo */
-  --accent:    oklch(55% 0.13 265);
-  --accent-2:  oklch(62% 0.13 265);
-  --accent-bg: oklch(95% 0.025 265);
-  --accent-line: oklch(85% 0.05 265);
+  /* Accent — saturated indigo, more confident */
+  --accent:    oklch(52% 0.20 264);
+  --accent-2:  oklch(60% 0.21 264);
+  --accent-bg: oklch(95% 0.04 264);
+  --accent-line: oklch(82% 0.08 264);
 
-  /* Semantic */
-  --ok:    oklch(55% 0.13 150);
-  --ok-bg: oklch(95% 0.03 150);
-  --warn:  oklch(62% 0.13 65);
-  --warn-bg: oklch(95% 0.04 65);
-  --err:   oklch(58% 0.16 25);
-  --err-bg: oklch(95% 0.03 25);
-  --info:  oklch(58% 0.1 230);
-  --info-bg: oklch(95% 0.025 230);
-  --muted-bg: oklch(94% 0.005 80);
+  /* Semantic — sharpened chroma */
+  --ok:    oklch(52% 0.18 150);
+  --ok-bg: oklch(95% 0.05 150);
+  --warn:  oklch(64% 0.17 65);
+  --warn-bg: oklch(95% 0.06 65);
+  --err:   oklch(56% 0.22 25);
+  --err-bg: oklch(95% 0.06 25);
+  --info:  oklch(56% 0.16 230);
+  --info-bg: oklch(95% 0.04 230);
+  --muted-bg: oklch(94% 0.005 85);
 
   /* Stage tint backgrounds (very soft) */
   --stage-rose:     oklch(95% 0.03 15);
@@ -64,27 +64,31 @@
 }
 
 [data-theme="dark"] {
-  --bg:    oklch(18% 0.008 260);
-  --bg-2:  oklch(22% 0.008 260);
-  --bg-3:  oklch(26% 0.008 260);
-  --panel: oklch(20% 0.008 260);
-  --line:  oklch(30% 0.01 260);
-  --line-2: oklch(36% 0.012 260);
-  --ink:   oklch(96% 0.005 260);
+  --bg:    oklch(16% 0.012 260);
+  --bg-2:  oklch(20% 0.012 260);
+  --bg-3:  oklch(24% 0.014 260);
+  --panel: oklch(18% 0.012 260);
+  --line:  oklch(28% 0.014 260);
+  --line-2: oklch(34% 0.016 260);
+  --ink:   oklch(97% 0.005 260);
   --ink-2: oklch(78% 0.008 260);
-  --ink-3: oklch(60% 0.008 260);
-  --ink-4: oklch(45% 0.008 260);
+  --ink-3: oklch(58% 0.01 260);
+  --ink-4: oklch(42% 0.01 260);
 
-  --accent:    oklch(70% 0.14 265);
-  --accent-2:  oklch(76% 0.14 265);
-  --accent-bg: oklch(28% 0.05 265);
-  --accent-line: oklch(38% 0.06 265);
+  --accent:    oklch(72% 0.20 264);
+  --accent-2:  oklch(78% 0.20 264);
+  --accent-bg: oklch(28% 0.08 264);
+  --accent-line: oklch(40% 0.10 264);
 
-  --ok-bg:   oklch(28% 0.04 150);
-  --warn-bg: oklch(28% 0.05 65);
-  --err-bg:  oklch(28% 0.05 25);
-  --info-bg: oklch(28% 0.04 230);
-  --muted-bg: oklch(24% 0.005 260);
+  --ok:      oklch(72% 0.18 150);
+  --ok-bg:   oklch(28% 0.06 150);
+  --warn:    oklch(78% 0.16 65);
+  --warn-bg: oklch(28% 0.07 65);
+  --err:     oklch(72% 0.20 25);
+  --err-bg:  oklch(28% 0.08 25);
+  --info:    oklch(72% 0.15 230);
+  --info-bg: oklch(28% 0.06 230);
+  --muted-bg: oklch(22% 0.008 260);
 
   --stage-rose:     oklch(28% 0.04 15);
   --stage-violet:   oklch(28% 0.045 295);
@@ -556,7 +560,7 @@ input, textarea, select { font-family: inherit; }
 }
 .feed-row:last-child { border-bottom: 0; }
 .feed-row .when { color: var(--ink-3); font-family: var(--font-mono); font-size: 11.5px; min-width: 56px; padding-top: 2px; }
-.feed-row .body { flex: 1; }
+.feed-row .body { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .feed-row .body .actor { font-weight: 500; }
 .feed-row .body .pid { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent); cursor: pointer; }
 .feed-row .body .pid:hover { text-decoration: underline; }
@@ -799,6 +803,10 @@ input, textarea, select { font-family: inherit; }
 }
 .btn:hover { background: var(--bg-2); color: var(--ink); }
 .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn[disabled], .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.primary[disabled], .btn.primary:disabled { background: var(--ink-3); border-color: var(--ink-3); color: var(--bg); opacity: 1; cursor: not-allowed; }
+.cp-edit-btn { width: 22px; height: 22px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); cursor: pointer; font-size: 11px; color: var(--ink-3); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.cp-edit-btn:hover { color: var(--ink); border-color: var(--ink-2); }
 [data-theme="dark"] .btn.primary { background: var(--accent); border-color: var(--accent); }
 .btn.sm { padding: 3px 8px; font-size: 11.5px; }
 

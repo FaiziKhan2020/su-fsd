@@ -194,16 +194,18 @@ function ProductCard({ p, onOpen }) {
       {/* Stream-owner avatars + progress for build/production */}
       {p.streams && (
         <div className="streams streams-v3">
-          {["sourcing","design","listing"].map(k => {
+          {["sourcing","design","listing","amazon"].map(k => {
             const s = p.streams[k]; if (!s) return null;
             const u = RD2.person(s.owner);
-            const tone = s.status === "Approved" || s.status === "Ordered" ? "ok"
-                       : s.status === "Backorder" ? "err"
+            const tone = s.status === "Approved" || s.status === "Ordered" || s.status === "Allowed — clean" ? "ok"
+                       : s.status === "Backorder" || s.status === "Hard pull" ? "err"
+                       : s.status === "GMP required" || s.status === "Testing required" ? "warn"
                        : s.status === "Not started" ? "idle" : "active";
+            const lbl = k === "amazon" ? "Amazon" : k.charAt(0).toUpperCase()+k.slice(1);
             return (
               <div key={k} className={`stream-row-v3 tone-${tone}`}>
                 {u ? <RD2.Avatar user={u} size="xs" /> : <span className="av-placeholder"></span>}
-                <span className="lbl-v3">{k.charAt(0).toUpperCase()+k.slice(1)}</span>
+                <span className="lbl-v3">{lbl}</span>
                 <div className="track-v3"><div className="fill-v3" style={{ width: s.pct+"%" }}></div></div>
                 <span className="pct-v3 mono">{s.pct}%</span>
               </div>
@@ -222,11 +224,7 @@ function ProductCard({ p, onOpen }) {
         </div>
       )}
 
-      {owner && !p.streams && !minimal && (
-        <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 11, color: "var(--ink-3)" }}>
-          <RD2.Avatar user={owner} size="sm" /> {owner.name}
-        </div>
-      )}
+      {/* Product-level owner badge removed — stream owners cover real routing. */}
     </button>
   );
 }

@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>R&D Pipeline — End-to-End Schematic</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink-1: #0F1115;
+    --ink-2: #2A2E37;
+    --ink-3: #5B616E;
+    --ink-4: #8B92A0;
+    --ink-5: #C7CCD4;
+    --paper: #FBFAF7;
+    --paper-2: #F4F2EC;
+    --line: #E1DED5;
+    --line-2: #D4D0C4;
+    --rule: #1a1c20;
+
+    --idea: #6B7280;
+    --niche: #7C3AED;
+    --review: #D97706;
+    --rd: #0891B2;
+    --build: #2563EB;
+    --prod: #059669;
+    --live: #0D9488;
+    --kill: #DC2626;
+    --hold: #CA8A04;
+
+    --sourcing: #B45309;
+    --design: #0891B2;
+    --listing: #9333EA;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter Tight", system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink-1);
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+  }
+  .mono { font-family: "JetBrains Mono", monospace; }
+
+  /* ===== Page frame ===== */
+  .page {
+    max-width: 1700px;
+    margin: 0 auto;
+    padding: 56px 48px 80px;
+  }
+
+  /* ===== Hero strip ===== */
+  .hero {
+    border: 1.5px solid var(--rule);
+    background: var(--paper);
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+    margin-bottom: 12px;
+  }
+  .hero-eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+  .hero-title {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    margin: 0 0 10px;
+  }
+  .hero-sub {
+    font-size: 15px;
+    color: var(--ink-2);
+    max-width: 760px;
+    line-height: 1.55;
+  }
+  .hero-meta {
+    text-align: right;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .hero-meta b { color: var(--ink-1); font-weight: 600; }
+
+  /* ===== Section header ===== */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin: 64px 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 1.5px solid var(--rule);
+  }
+  .section-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .section-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+  .section-desc {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-style: italic;
+  }
+
+  /* ===== Macro flow strip ===== */
+  .macro-flow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+    border: 1px solid var(--line-2);
+    background: var(--paper);
+    margin-bottom: 8px;
+  }
+  .macro-cell {
+    padding: 18px 14px;
+    border-right: 1px solid var(--line-2);
+    position: relative;
+    background: var(--paper);
+  }
+  .macro-cell:last-child { border-right: 0; }
+  .macro-cell::after {
+    content: "▶";
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--ink-4);
+    background: var(--paper);
+    width: 14px;
+    text-align: center;
+    z-index: 2;
+  }
+  .macro-cell:last-child::after { display: none; }
+  .macro-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink-3);
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+  .macro-stage {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .macro-who {
+    font-size: 11px;
+    color: var(--ink-3);
+    line-height: 1.3;
+  }
+  .macro-color-bar {
+    height: 3px;
+    margin: -18px -14px 12px;
+    background: currentColor;
+  }
+  .c-idea { color: var(--idea); }
+  .c-niche { color: var(--niche); }
+  .c-review { color: var(--review); }
+  .c-rd { color: var(--rd); }
+  .c-build { color: var(--build); }
+  .c-prod { color: var(--prod); }
+  .c-live { color: var(--live); }
+
+  /* ===== Stage detail blocks ===== */
+  .stage {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    border: 1px solid var(--line-2);
+    background: var(--paper);
+    margin-bottom: 10px;
+  }
+  .stage-spine {
+    padding: 22px 20px;
+    border-right: 1px solid var(--line-2);
+    background: var(--paper-2);
+    position: relative;
+  }
+  .stage-spine::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: currentColor;
+  }
+  .stage-spine-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+    letter-spacing: 0.06em;
+  }
+  .stage-spine-name {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 8px;
+    color: var(--ink-1);
+  }
+  .stage-spine-tagline {
+    font-size: 12px;
+    color: var(--ink-3);
+    line-height: 1.5;
+  }
+  .stage-spine-meta {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line-2);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .stage-spine-meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stage-spine-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    letter-spacing: 0.1em;
+  }
+  .stage-spine-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-1);
+  }
+
+  .stage-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .stage-col {
+    padding: 22px 20px;
+    border-right: 1px solid var(--line-2);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .stage-col:last-child { border-right: 0; }
+  .stage-col-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .stage-col ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .stage-col li {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    padding-left: 14px;
+    position: relative;
+  }
+  .stage-col li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--ink-4);
+    font-weight: 500;
+  }
+  .stage-col li b {
+    color: var(--ink-1);
+    font-weight: 600;
+  }
+  .gate-line {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line-2);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .gate-line b {
+    color: currentColor;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-family: "JetBrains Mono", monospace;
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .who-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-1);
+    margin-right: 4px;
+  }
+  .who-pill.ext {
+    background: #FFF7ED;
+    border-color: #FED7AA;
+    color: #9A3412;
+  }
+  .who-pill.ext::before {
+    content: "●";
+    color: #EA580C;
+    font-size: 8px;
+  }
+
+  /* ===== Build-stage parallel streams ===== */
+  .streams {
+    border: 1.5px solid var(--rule);
+    background: var(--paper);
+    padding: 0;
+    margin: 24px 0 12px;
+  }
+  .streams-head {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    background: var(--paper-2);
+  }
+  .streams-head h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+  .streams-head .note {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-style: italic;
+  }
+  .streams-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stream {
+    padding: 22px 24px;
+    border-right: 1px solid var(--line-2);
+    border-top: 4px solid currentColor;
+    display: flex;
+    flex-direction: column;
+  }
+  .stream:last-child { border-right: 0; }
+  .stream-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+    color: var(--ink-1);
+  }
+  .stream-owner {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+    font-family: "JetBrains Mono", monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .stream-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .stream-step {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 10px;
+  }
+  .stream-step-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: currentColor;
+    padding-top: 2px;
+  }
+  .stream-step-body {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.45;
+  }
+  .stream-step-body b {
+    color: var(--ink-1);
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 2px;
+    letter-spacing: -0.005em;
+  }
+
+  /* ===== Mfg / type matrix ===== */
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--line-2);
+    background: var(--paper);
+    font-size: 12.5px;
+    margin-bottom: 12px;
+  }
+  .matrix th, .matrix td {
+    padding: 12px 16px;
+    text-align: left;
+    border-right: 1px solid var(--line-2);
+    border-bottom: 1px solid var(--line-2);
+    vertical-align: top;
+  }
+  .matrix th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    background: var(--paper-2);
+    font-weight: 600;
+  }
+  .matrix td:first-child {
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  .matrix th:last-child, .matrix td:last-child { border-right: 0; }
+  .matrix tr:last-child td { border-bottom: 0; }
+  .matrix code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  /* ===== Branching paths ===== */
+  .branches {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 1px solid var(--line-2);
+    background: var(--paper);
+    margin-bottom: 12px;
+  }
+  .branch {
+    padding: 22px 24px;
+    border-right: 1px solid var(--line-2);
+    border-top: 4px solid currentColor;
+  }
+  .branch:last-child { border-right: 0; }
+  .branch h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink-1);
+  }
+  .branch-from {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: "JetBrains Mono", monospace;
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .branch p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+
+  /* ===== Roster ===== */
+  .roster {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--line-2);
+    background: var(--paper);
+  }
+  .person {
+    padding: 16px 18px;
+    border-right: 1px solid var(--line-2);
+    border-bottom: 1px solid var(--line-2);
+  }
+  .person:nth-child(4n) { border-right: 0; }
+  .person:nth-last-child(-n+4):not(:nth-child(n+10)) { border-bottom: 0; }
+  .person-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    color: white;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0;
+  }
+  .person-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-1);
+    letter-spacing: -0.005em;
+  }
+  .person-role {
+    font-size: 11px;
+    color: var(--ink-3);
+    line-height: 1.4;
+  }
+  .person-tag {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 9.5px;
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    color: var(--ink-3);
+    background: var(--paper-2);
+  }
+  .person-tag.ext {
+    color: #9A3412;
+    background: #FFF7ED;
+    border-color: #FED7AA;
+  }
+
+  /* ===== Footer ===== */
+  .colophon {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1.5px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ===== Print ===== */
+  @media print {
+    body { background: white; }
+    .page { padding: 24px; max-width: none; }
+    .stage, .streams, .branches, .matrix, .roster, .macro-flow, .hero { break-inside: avoid; }
+    .section-head { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== HERO ===== -->
+  <header class="hero">
+    <div>
+      <div class="hero-eyebrow">R&D Pipeline · End-to-End Schematic · v3</div>
+      <h1 class="hero-title">From raw idea to live on Amazon.</h1>
+      <p class="hero-sub">
+        Every product moves left-to-right through 7 stages, with branching paths for kills and holds. Each stage has a clear owner, a piece of work, and a gate that has to clear before the product advances. The diagram below maps the whole thing — read it like a wall.
+      </p>
+    </div>
+    <div class="hero-meta">
+      <div><b>9</b> internal team</div>
+      <div><b>5</b> external (1 formulator + 4 mfg)</div>
+      <div><b>4</b> contract manufacturers</div>
+      <div><b>7</b> active stages + kill/hold</div>
+      <div><b>3</b> parallel streams in Build</div>
+    </div>
+  </header>
+
+  <!-- ===== MACRO FLOW STRIP ===== -->
+  <div class="macro-flow">
+    <div class="macro-cell c-idea">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">01</div>
+      <div class="macro-stage">Idea</div>
+      <div class="macro-who">Anyone drops it in</div>
+    </div>
+    <div class="macro-cell c-niche">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">02</div>
+      <div class="macro-stage">Niche Research</div>
+      <div class="macro-who">Malik · deep dive</div>
+    </div>
+    <div class="macro-cell c-review">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">03</div>
+      <div class="macro-stage">Niche Review</div>
+      <div class="macro-who">Chesky + Joel · go/no-go</div>
+    </div>
+    <div class="macro-cell c-rd">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">04</div>
+      <div class="macro-stage">R&D / Sampling</div>
+      <div class="macro-who">Talha or mfg · iterate</div>
+    </div>
+    <div class="macro-cell c-build">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">05</div>
+      <div class="macro-stage">In Build</div>
+      <div class="macro-who">Ronel ∥ Esty ∥ April</div>
+    </div>
+    <div class="macro-cell c-prod">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">06</div>
+      <div class="macro-stage">In Production</div>
+      <div class="macro-who">Mfg makes units · Ronel watches</div>
+    </div>
+    <div class="macro-cell c-live">
+      <div class="macro-color-bar"></div>
+      <div class="macro-num">07</div>
+      <div class="macro-stage">Launched</div>
+      <div class="macro-who">April · live on Amazon</div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: STAGE-BY-STAGE ===== -->
+  <div class="section-head">
+    <span class="section-num">§ 01</span>
+    <h2 class="section-title">Stage by stage</h2>
+    <span class="section-desc">Each row: who, what they do, what comes out, and what has to clear to advance.</span>
+  </div>
+
+  <!-- STAGE 01: IDEA -->
+  <div class="stage">
+    <div class="stage-spine c-idea">
+      <div class="stage-spine-num">STAGE 01</div>
+      <h3 class="stage-spine-name">Idea</h3>
+      <div class="stage-spine-tagline">Captured concept; needs a champion.</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Typical age</span>
+          <span class="stage-spine-value">1–7 days</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Surface</span>
+          <span class="stage-spine-value">Idea Inbox (rail)</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Trend signal — TikTok, Reddit, Amazon search rising</li>
+          <li>Customer ask — review/support patterns</li>
+          <li>Adjacent SKU gap — "we sell X, should sell Y"</li>
+          <li>Supplier cold-call — "we have a new ingredient…"</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who</div>
+        <ul>
+          <li><span class="who-pill">Chesky</span> Triage (single decider)</li>
+          <li><span class="who-pill">Anyone</span> Submit ideas</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Idea enters the Inbox with a one-line pitch</li>
+          <li>Chesky decides: <b>promote</b> to research, <b>reject</b> with reason, or <b>park</b></li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>One-liner pitch</li>
+          <li>Brand bucket (PN or DON)</li>
+          <li>Product type guess (liquid / capsule / powder)</li>
+          <li>Promote → assigns to Malik</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-idea">
+        <b>Gate to advance</b>
+        Chesky clicks <b>Promote</b>. Idea becomes a Product, Malik is auto-owner, stage flips to Niche Research.
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 02: NICHE RESEARCH -->
+  <div class="stage">
+    <div class="stage-spine c-niche">
+      <div class="stage-spine-num">STAGE 02</div>
+      <h3 class="stage-spine-name">Niche Research</h3>
+      <div class="stage-spine-tagline">Malik writes the deep dive — market, competitors, ingredients.</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Typical duration</span>
+          <span class="stage-spine-value">5–10 days</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Artifact</span>
+          <span class="stage-spine-value">Niche Doc (Google Doc)</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Promoted idea + Chesky's brief</li>
+          <li>Helium 10 / Jungle Scout pulls</li>
+          <li>Competitor ASIN review</li>
+          <li>Ingredient research (PubMed, examine.com)</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who</div>
+        <ul>
+          <li><span class="who-pill">Malik</span> Writes the doc</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Malik fills 6-tab template: market, competitors, ingredients, claims, positioning, financials</li>
+          <li>System parses doc into structured fields when uploaded</li>
+          <li>"Researching" → "Parsed" sub-state</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>Niche analysis doc — 6 tabs filled</li>
+          <li>Recommended formula (Malik + PDS)</li>
+          <li>Target retail price + COGS budget</li>
+          <li>3-5 competitor ASINs to beat</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-niche">
+        <b>Gate to advance</b>
+        Malik uploads the parsed doc. Stage flips to <b>Niche Review</b> and the dual-approval queue lights up for Chesky + Joel.
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 03: NICHE REVIEW -->
+  <div class="stage">
+    <div class="stage-spine c-review">
+      <div class="stage-spine-num">STAGE 03</div>
+      <h3 class="stage-spine-name">Niche Review</h3>
+      <div class="stage-spine-tagline">Two-of-two approval. Chesky decides product. Joel decides money.</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Typical duration</span>
+          <span class="stage-spine-value">2–5 days</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Artifact</span>
+          <span class="stage-spine-value">Approval record (per approver)</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Parsed niche doc</li>
+          <li>Comments thread on the product</li>
+          <li>Margin model + COGS estimate</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who</div>
+        <ul>
+          <li><span class="who-pill">Chesky</span> Strategic fit</li>
+          <li><span class="who-pill">Joel</span> Margin / capital</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Each independently: <b>Approve</b>, <b>Request changes</b>, or <b>Reject</b></li>
+          <li>Mobile-friendly — approvable from phone</li>
+          <li>Both must approve before advance</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>Both approvals stamped + dated</li>
+          <li>Or — kill with category + reason</li>
+          <li>Or — sent back for niche revisions</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-review">
+        <b>Gate to advance</b>
+        Both Chesky AND Joel = ✓. Auto-advances to R&D and routes by product type (see matrix below).
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 04: R&D -->
+  <div class="stage">
+    <div class="stage-spine c-rd">
+      <div class="stage-spine-num">STAGE 04</div>
+      <h3 class="stage-spine-name">R&D / Sampling</h3>
+      <div class="stage-spine-tagline">Formula gets real. Samples ship. Iterations until "approved."</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Typical duration</span>
+          <span class="stage-spine-value">3–8 weeks</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Artifact</span>
+          <span class="stage-spine-value">Final spec sheet</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Approved niche doc + recommended formula</li>
+          <li>Manufacturer auto-locked (by type)</li>
+          <li>Ronel's ingredient supplier rolodex</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who</div>
+        <ul>
+          <li><span class="who-pill ext">Talha</span> Liquid / powder formulator</li>
+          <li><span class="who-pill ext">Mimi · Connor</span> Capsule reviewers</li>
+          <li><span class="who-pill">Ronel</span> Ships ingredient samples</li>
+          <li><span class="who-pill">Malik</span> Owns the gate</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Ronel ships ingredient samples to Talha (or to mfg)</li>
+          <li>Talha iterates — flavor, blend, stability</li>
+          <li>Verdicts: <b>good</b>, <b>tweak</b>, <b>reject</b></li>
+          <li>Loop until everyone signs off</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>Final formula locked (mg per ingredient, flavor, carrier)</li>
+          <li>Spec sheet — what mfg will execute</li>
+          <li>Approved physical sample (we keep one)</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-rd">
+        <b>Gate to advance</b>
+        Sample approved by formula owner + Malik. Spec sheet finalized. Stage flips to <b>In Build</b> — three streams kick off in parallel.
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 05: BUILD -->
+  <div class="stage">
+    <div class="stage-spine c-build">
+      <div class="stage-spine-num">STAGE 05</div>
+      <h3 class="stage-spine-name">In Build</h3>
+      <div class="stage-spine-tagline">Three streams run in parallel — sourcing, design, listing. Detailed below.</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Typical duration</span>
+          <span class="stage-spine-value">3–6 weeks</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Artifacts</span>
+          <span class="stage-spine-value">BOM · Mocks · Listing draft</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Final spec sheet</li>
+          <li>Locked manufacturer + production run size</li>
+          <li>Brand guidelines (PN or DON)</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who (parallel)</div>
+        <ul>
+          <li><span class="who-pill">Ronel</span> Sourcing stream</li>
+          <li><span class="who-pill">Esty</span> Design stream</li>
+          <li><span class="who-pill">April</span> Listing stream</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Streams run independently — own owners, own gates</li>
+          <li>Each stream's progress shows on the card as 3 dots</li>
+          <li>Comments + AI nudges keep streams in sync</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>Sourcing → BOM with picks + ordered status</li>
+          <li>Design → approved label + box artwork</li>
+          <li>Listing → main image + bullets + A+ assets</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-build">
+        <b>Gate to advance</b>
+        ALL THREE streams complete. POs placed (outside system). Mfg confirms start date. Stage flips to <b>In Production</b>.
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 06: PRODUCTION -->
+  <div class="stage">
+    <div class="stage-spine c-prod">
+      <div class="stage-spine-num">STAGE 06</div>
+      <h3 class="stage-spine-name">In Production</h3>
+      <div class="stage-spine-tagline">Mfg makes units. We track the buy and prep launch.</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Typical duration</span>
+          <span class="stage-spine-value">4–10 weeks</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Artifact</span>
+          <span class="stage-spine-value">Production Buy panel</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Confirmed BOM + locked mfg</li>
+          <li>Run size (units)</li>
+          <li>Approved artwork files for printer</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who</div>
+        <ul>
+          <li><span class="who-pill">Ronel</span> Tracks BOM order status</li>
+          <li><span class="who-pill ext">Mfg</span> Manufactures + bottles</li>
+          <li><span class="who-pill">April</span> Stages listing for launch</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Production Buy panel shows ordered/not-ordered per line</li>
+          <li>Critical-lead alerts when an unordered item blocks the run</li>
+          <li>Sole-source vendors flagged 🔒</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>Finished units arrive at FBA / 3PL</li>
+          <li>Lot codes + expiry dated</li>
+          <li>Listing ready to flip live</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-prod">
+        <b>Gate to advance</b>
+        Units received + listing approved. April flips it live. Stage flips to <b>Launched</b>.
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 07: LAUNCHED -->
+  <div class="stage">
+    <div class="stage-spine c-live">
+      <div class="stage-spine-num">STAGE 07</div>
+      <h3 class="stage-spine-name">Launched</h3>
+      <div class="stage-spine-tagline">Live on Amazon. Thesis vs. actual outcome tracked.</div>
+      <div class="stage-spine-meta">
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Window</span>
+          <span class="stage-spine-value">90-day post-launch review</span>
+        </div>
+        <div class="stage-spine-meta-row">
+          <span class="stage-spine-label">Artifact</span>
+          <span class="stage-spine-value">Live tab — outcome card</span>
+        </div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-col">
+        <div class="stage-col-label">Inputs</div>
+        <ul>
+          <li>Niche thesis (sales target, BSR target)</li>
+          <li>Actual sales feed</li>
+          <li>Reviews + customer signals</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Who</div>
+        <ul>
+          <li><span class="who-pill">April</span> Listing perf + reviews</li>
+          <li><span class="who-pill">Joel</span> Margin reality check</li>
+          <li><span class="who-pill">Chesky</span> Reorder / iterate / sunset</li>
+        </ul>
+        <div class="stage-col-label" style="margin-top:8px">What happens</div>
+        <ul>
+          <li>Thesis vs. actual delta visible on Live tab</li>
+          <li>If &gt;50% under thesis at 90d → flag for retro</li>
+          <li>Reorder triggers based on sell-through</li>
+        </ul>
+      </div>
+      <div class="stage-col">
+        <div class="stage-col-label">Outputs</div>
+        <ul>
+          <li>Sell-through curve</li>
+          <li>Margin actuals</li>
+          <li>Reorder decision</li>
+          <li>Lessons → fed back into Niche template</li>
+        </ul>
+      </div>
+      <div class="stage-col gate-line c-live">
+        <b>Loop closed</b>
+        Outcomes inform the next round of niche research. The system learns; the team doesn't repeat mistakes.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: BUILD STREAMS ===== -->
+  <div class="section-head">
+    <span class="section-num">§ 02</span>
+    <h2 class="section-title">Inside Build — three parallel streams</h2>
+    <span class="section-desc">Each stream has its own owner and gates; all three must finish before Production can start.</span>
+  </div>
+
+  <div class="streams">
+    <div class="streams-head">
+      <h3>Sourcing ∥ Design ∥ Listing</h3>
+      <span class="note">Run independently. Status shows as three dots on each Build card.</span>
+    </div>
+    <div class="streams-grid">
+
+      <!-- SOURCING -->
+      <div class="stream" style="color: var(--sourcing)">
+        <h4 class="stream-name">Sourcing</h4>
+        <div class="stream-owner">Lead · Ronel</div>
+        <div class="stream-steps">
+          <div class="stream-step">
+            <div class="stream-step-num">01</div>
+            <div class="stream-step-body">
+              <b>Determine mode</b>
+              We-supply (capsule, powder, softgel) or mfg-supply (tea). Liquid/cream/gummy decided per product.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">02</div>
+            <div class="stream-step-body">
+              <b>Quote ingredients</b>
+              JiaHerb · JHD · Stauber · Albion · KSM-66 · Aditya · NB · ProbiWay. Sole-source items locked 🔒.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">03</div>
+            <div class="stream-step-body">
+              <b>Quote packaging</b>
+              Always our job. Labels (Starrk), boxes (Insta Print Pack), inserts (Deluxe). Bottle/dropper open-shopped.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">04</div>
+            <div class="stream-step-body">
+              <b>Pick winners</b>
+              Ronel marks each line "picked" — that becomes the BOM.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">05</div>
+            <div class="stream-step-body">
+              <b>Production Buy</b>
+              Read-only view of what's ordered vs. open. POs created in Ronel's existing system.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DESIGN -->
+      <div class="stream" style="color: var(--design)">
+        <h4 class="stream-name">Design</h4>
+        <div class="stream-owner">Lead · Esty</div>
+        <div class="stream-steps">
+          <div class="stream-step">
+            <div class="stream-step-num">01</div>
+            <div class="stream-step-body">
+              <b>Brief from niche doc</b>
+              Brand bucket (PN or DON), positioning, color direction.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">02</div>
+            <div class="stream-step-body">
+              <b>Label design</b>
+              First mock for the bottle/pouch. Iterates with Chesky comments.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">03</div>
+            <div class="stream-step-body">
+              <b>Box + insert</b>
+              Folding carton dieline, usage insert copy, box artwork.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">04</div>
+            <div class="stream-step-body">
+              <b>Approval</b>
+              Chesky + April sign off. Versions tracked in dossier timeline.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">05</div>
+            <div class="stream-step-body">
+              <b>Print-ready hand-off</b>
+              Files released to Ronel for printers. Unblocks "Awaiting artwork" packaging lines.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LISTING -->
+      <div class="stream" style="color: var(--listing)">
+        <h4 class="stream-name">Listing</h4>
+        <div class="stream-owner">Lead · April</div>
+        <div class="stream-steps">
+          <div class="stream-step">
+            <div class="stream-step-num">01</div>
+            <div class="stream-step-body">
+              <b>Listing brief</b>
+              Title, keyword targets, claims (must match niche doc + label).
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">02</div>
+            <div class="stream-step-body">
+              <b>Copy draft</b>
+              Bullets, description, SEO. April writes; Chesky reviews.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">03</div>
+            <div class="stream-step-body">
+              <b>Main image</b>
+              Paresh handles. White-bg hero per Amazon spec.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">04</div>
+            <div class="stream-step-body">
+              <b>Gallery + A+</b>
+              Qaiser builds the secondary images and A+ premium content modules.
+            </div>
+          </div>
+          <div class="stream-step">
+            <div class="stream-step-num">05</div>
+            <div class="stream-step-body">
+              <b>Stage in Seller Central</b>
+              Loaded but not flipped live. Goes live the day units land.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== SECTION: TYPE-SPECIFIC ROUTING ===== -->
+  <div class="section-head">
+    <span class="section-num">§ 03</span>
+    <h2 class="section-title">Routing by product type</h2>
+    <span class="section-desc">The flow is the same — but who runs R&D and who manufactures depends on the type.</span>
+  </div>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th style="width: 110px">Type</th>
+        <th>R&D owner</th>
+        <th>Manufacturer pick</th>
+        <th>Ingredient sourcing</th>
+        <th>Has flavor?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Liquid</td>
+        <td><span class="who-pill ext">Talha</span> proposes blend + flavor; iterates samples</td>
+        <td><code>auto-lock</code> · BioCorp (Talha contracts there)</td>
+        <td><code>dynamic</code> — sometimes Ronel, sometimes BioCorp</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Capsule</td>
+        <td><span class="who-pill ext">Mfg</span> reviews Malik+PDS spec; ships physical samples</td>
+        <td><code>competitive</code> · Herbally Yours <i>vs</i> Brand Nutra. Never BioCorp (too pricey).</td>
+        <td><code>we-supply</code> — Ronel ALWAYS</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>Powder</td>
+        <td><span class="who-pill ext">Talha</span> samples in-house (TS doesn't sample)</td>
+        <td><code>auto-lock</code> · TS Food Packaging</td>
+        <td><code>we-supply</code> — Ronel ALWAYS</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Tea</td>
+        <td>Mfg formulates in-house</td>
+        <td><code>tbd</code> · Metro Tea (typical)</td>
+        <td><code>mfg-supply</code> — we never touch raws</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Softgel · Cream · Gummy</td>
+        <td>TBD per product</td>
+        <td><code>tbd</code> — manufacturer decided case-by-case</td>
+        <td><code>we-supply</code> for softgel; <code>dynamic</code> for cream/gummy</td>
+        <td>Varies</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="font-size: 11.5px; color: var(--ink-3); font-style: italic; margin-bottom: 12px;">
+    Packaging is <b>always</b> our job — every type, every product. Labels go to Starrk; boxes to Insta Print Pack; inserts to Deluxe Printing. These are sole-source.
+  </div>
+
+  <!-- ===== SECTION: BRANCHES ===== -->
+  <div class="section-head">
+    <span class="section-num">§ 04</span>
+    <h2 class="section-title">Off-ramps &amp; loops</h2>
+    <span class="section-desc">Not every idea makes it through. Here's where products exit, pause, or loop back.</span>
+  </div>
+
+  <div class="branches">
+    <div class="branch" style="color: var(--kill)">
+      <h4>Killed</h4>
+      <div class="branch-from">From: Idea · Niche Review · R&D</div>
+      <p>Hard no. Reason captured (margin, market saturation, regulatory, supply). Stays searchable in killed bucket so the team can spot patterns and not re-pitch the same dead idea in 6 months.</p>
+    </div>
+    <div class="branch" style="color: var(--hold)">
+      <h4>On Hold</h4>
+      <div class="branch-from">From: Any active stage</div>
+      <p>Soft pause. Waiting on something external — supply availability, a competitor move, a brand decision. Surfaces in the rail with a "revisit on" date. Auto-pings owner when that hits.</p>
+    </div>
+    <div class="branch" style="color: var(--niche)">
+      <h4>Back to Niche</h4>
+      <div class="branch-from">From: Niche Review</div>
+      <p>"Request changes" sends it back to Malik with specific notes. Doesn't burn the product — keeps the same ID, comments, history. Just unlocks the doc for revisions.</p>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: ROSTER ===== -->
+  <div class="section-head">
+    <span class="section-num">§ 05</span>
+    <h2 class="section-title">Who's involved</h2>
+    <span class="section-desc">9 internal team members + 5 external partners. Manufacturers + formulator are first-class people in the system.</span>
+  </div>
+
+  <div class="roster">
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#5B5BD6">CK</div><div class="person-name">Chesky</div></div>
+      <div class="person-role">Overseer · triages ideas, approves niches, signs off on design</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#0E7C66">JO</div><div class="person-name">Joel</div></div>
+      <div class="person-role">Finance · margin gate, capital decisions, post-launch P&amp;L</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#B45309">MA</div><div class="person-name">Malik</div></div>
+      <div class="person-role">R&amp;D Lead · writes niche docs, owns formula spec sheet</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#7C2D12">RO</div><div class="person-name">Ronel</div></div>
+      <div class="person-role">Purchasing · ingredients, packaging, production buy tracking</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#9333EA">AP</div><div class="person-name">April</div></div>
+      <div class="person-role">Catalog Lead · listing copy, Seller Central, post-launch perf</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#0891B2">ES</div><div class="person-name">Esty</div></div>
+      <div class="person-role">Designer · labels, boxes, inserts, brand visuals</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#BE185D">PA</div><div class="person-name">Paresh</div></div>
+      <div class="person-role">Main Image · Amazon hero shots</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#4F46E5">QA</div><div class="person-name">Qaiser</div></div>
+      <div class="person-role">Gallery / A+ · secondary images + premium content</div>
+      <span class="person-tag">Internal</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#0F766E">TA</div><div class="person-name">Talha</div></div>
+      <div class="person-role">Formulator · liquids &amp; powders. Doses + flavor are his call.</div>
+      <span class="person-tag ext">External · Independent</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#1E40AF">CH</div><div class="person-name">Chris</div></div>
+      <div class="person-role">BioCorp · liquid + capsule (Talha contracts here)</div>
+      <span class="person-tag ext">External · Mfg</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#15803D">MI</div><div class="person-name">Mimi</div></div>
+      <div class="person-role">Herbally Yours · liquid + capsule</div>
+      <span class="person-tag ext">External · Mfg</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#A16207">CO</div><div class="person-name">Connor</div></div>
+      <div class="person-role">Brand Nutra · capsule + powder</div>
+      <span class="person-tag ext">External · Mfg</span>
+    </div>
+    <div class="person">
+      <div class="person-row"><div class="avatar" style="background:#9D174D">KI</div><div class="person-name">Kim</div></div>
+      <div class="person-role">TS Food Packaging · powder. Does not sample.</div>
+      <span class="person-tag ext">External · Mfg</span>
+    </div>
+  </div>
+
+  <!-- ===== COLOPHON ===== -->
+  <div class="colophon">
+    <div>R&amp;D Pipeline OS · Schematic v3 · Don't Overthink Nutrition · Hassan Riaz Inc</div>
+    <div>Print: Cmd/Ctrl + P · Reads as a wall</div>
+  </div>
+
+</div>
+</body>
+</html>
