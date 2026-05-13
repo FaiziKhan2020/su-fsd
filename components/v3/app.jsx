@@ -8,7 +8,7 @@ window.RD2 = Object.assign(window.RD2 || {}, {
   // Live mirror of the current user — set every render by AppV3.
   // Lets non-React helpers + utility components ask "can this user act?"
   // without having to thread `currentUser` through 8 layers of props.
-  __currentUser: (() => { try { return localStorage.getItem("rd-currentUser") || "chesky"; } catch (e) { return "chesky"; } })(),
+  
 
   // Admin override — Joel and Chesky see/use every action, regardless of ownership.
   // Anyone else: only when they own the product OR the waiting-on flag points to them.
